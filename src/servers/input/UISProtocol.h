@@ -1,0 +1,17 @@
+#ifndef _UIS_PROTOCOL_H
+#define _UIS_PROTOCOL_H
+
+
+enum {
+	B_UIS_GET_DEVICES = 1,
+	B_UIS_FIND_DEVICE,
+	
+	B_UIS_GET_REPORT,
+	B_UIS_GET_ITEM,
+	B_UIS_ITEM_SET_TARGET,
+};
+
+#define B_UIS_ITEM_EVENT '_UIE'
+
+
+#endif // _UIS_PROTOCOL_H
