@@ -39,6 +39,8 @@ if $(TARGET_PLATFORM) != haiku {
 	APPSERVER_TEST_MODE = 0 ;
 }
 
+SEARCH_SOURCE += [ FDirName $(SUBDIR) UIS ] ;
+
 Server input_server :
 	InputServer.cpp
 	InputServerDevice.cpp
@@ -61,7 +63,13 @@ Server input_server :
 	AddOnMonitorHandler.cpp
 	NodeMonitorHandler.cpp
 
-	UIS.cpp
+	UISManager.cpp
+	UISDevice.cpp
+	UISReport.cpp
+	UISItem.cpp
+	UISString.cpp
+	UISTarget.cpp
+	UIS_debug.cpp
 
 	: be libtextencoding.so $(TARGET_LIBSTDC++)
 ;
