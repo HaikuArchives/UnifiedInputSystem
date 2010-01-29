@@ -2,8 +2,8 @@
 #include "UISManager.h"
 #include "UISReport.h"
 
+#include <uis_driver.h>
 #include <UISProtocol.h>
-#include "kb_mouse_driver.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -37,7 +37,7 @@ UISDevice::UISDevice(UISManager *manager, const char *path)
 	//TRACE("usage: %08x, input report count: %d, name: %d\n", fUsage,
 	//	info.reportCount, info.name);
 
-	for (uint8 n = 0; n<info.reportCount; n++) {
+	for (uint8 n = 0; n < info.reportCount; n++) {
 		UISReport *report = new (std::nothrow) UISReport(fDevice, this, 1, n);
 			// FIXME: un-fix the report type
 		if (report == NULL)

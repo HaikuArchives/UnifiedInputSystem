@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <ring_buffer.h>
 
-#include "kb_mouse_driver.h"
+#include "uis_driver.h"
 
 
 static const size_t kRingBufferSize = 512;
@@ -16,7 +16,7 @@ static const size_t kRingBufferSize = 512;
 
 #ifdef TRACE
 #undef TRACE
-#define TRACE(a...) dprintf("\33[34mjoy_dev:\33[0m " a)
+#define TRACE(a...) dprintf("\33[34musb_hid_uis:\33[0m " a)
 #endif
 ReportHandler::ReportHandler(HIDReport *report)
 	:

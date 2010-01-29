@@ -132,17 +132,20 @@ class BUInputDevice {
 public:
 	static BUInputDevice *	FindDevice(const char *name);
 
-						BUInputDevice(void *device, const char *name,
-							uint32 usage, uint8 inputReports);
-						~BUInputDevice();
+	static int32			CountDevices();
+	static BUInputDevice *	DeviceAt(int32 index);
 
-	BUInputReport *		ReportAt(uint8 index);
+							BUInputDevice(void *device, const char *name,
+								uint32 usage, uint8 inputReports);
+							~BUInputDevice();
+
+	BUInputReport *			ReportAt(uint8 index);
 
 private:
-	void *				fDevice;
-	char *				fName;
-	uint32				fUsage;
-	uint8				fInputReports;
+	void *					fDevice;
+	char *					fName;
+	uint32					fUsage;
+	uint8					fInputReports;
 };
 
 
@@ -167,6 +170,20 @@ BUInputDevice::FindDevice(const char *name)
 		return NULL;
 
 	return new (std::nothrow) BUInputDevice(device, name, usage, inputReports);
+}
+
+
+int32
+CountDevices()
+{
+	return 0;
+}
+
+
+BUInputDevice *
+BUInputDevice::DeviceAt(int32 index)
+{
+	return NULL;
 }
 
 
