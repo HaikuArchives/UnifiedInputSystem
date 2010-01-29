@@ -4,8 +4,8 @@
 #include "UISReport.h"
 #include "UISTarget.h"
 
+#include <uis_driver.h>
 #include <UISProtocol.h>
-#include "kb_mouse_driver.h"
 
 #include "UIS_debug.h"
 

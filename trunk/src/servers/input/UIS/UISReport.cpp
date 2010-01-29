@@ -2,8 +2,8 @@
 #include "UISDevice.h"
 #include "UISItem.h"
 
+#include <uis_driver.h>
 #include <UISProtocol.h>
-#include "kb_mouse_driver.h"
 
 #include <errno.h>
 #include <stdio.h>
@@ -40,7 +40,7 @@ UISReport::UISReport(int fd, UISDevice *device, uint8 type, uint8 index)
 	//	reportDesc.out.itemCount);
 
 	uint32 n = 0;
-	for ( ; n<reportDesc.out.itemCount; n++) {
+	for ( ; n < reportDesc.out.itemCount; n++) {
 		UISReportItem *item = new (std::nothrow) UISReportItem(fd, this, n);
 			if (item == NULL)
 				break;
@@ -107,7 +107,7 @@ void
 UISReport::SetReport(uis_report_data *data)
 {
 	//TRACE("has items: %d\n", data->out.items);
-	for (uint32 i = 0; i<data->out.items; i++) {
+	for (uint32 i = 0; i < data->out.items; i++) {
 		//TRACE("index of item: %d\n", data->out.item[i].index);
 		UISReportItem *item = (UISReportItem *)
 			fItemList.ItemAt(data->out.item[i].index); // TODO: check numbering

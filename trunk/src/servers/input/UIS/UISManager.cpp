@@ -7,8 +7,8 @@
 #include <Autolock.h>
 
 #include <PathMonitor.h>
+#include <uis_driver.h>
 #include <UISProtocol.h>
-#include "kb_mouse_driver.h"
 
 #include <new>
 
@@ -107,7 +107,7 @@ UISManager::_HandleAddRemoveDevice(BMessage *message)
 		BAutolock lock(fUISDeviceListLocker);
 		if (lock.IsLocked()) {
 			UISDevice *device;
-			for (int32 i = 0; i<fUISDeviceList.CountItems(); i++) {
+			for (int32 i = 0; i < fUISDeviceList.CountItems(); i++) {
 				device = (UISDevice *) fUISDeviceList.ItemAt(i);
 				if (device->HasPath(path)) {
 					fUISDeviceList.RemoveItem(i);
@@ -135,7 +135,7 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 				BAutolock lock(fUISDeviceListLocker);
 				if (lock.IsLocked()) {
 					UISDevice *device;
-					for (int32 i = 0; i<fUISDeviceList.CountItems(); i++) {
+					for (int32 i = 0; i < fUISDeviceList.CountItems(); i++) {
 						device = (UISDevice *) fUISDeviceList.ItemAt(i);
 
 						BMessage msg('Ihdf');
@@ -170,7 +170,7 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 				BAutolock lock(fUISDeviceListLocker);
 				if (lock.IsLocked()) {
 					UISDevice *device;
-					for (int32 i = 0; i<fUISDeviceList.CountItems(); i++) {
+					for (int32 i = 0; i < fUISDeviceList.CountItems(); i++) {
 						device = (UISDevice *) fUISDeviceList.ItemAt(i);
 						//TRACE("cmp %s, %s\n", name, device->Name());
 						if (device->HasName(name)) {
@@ -281,7 +281,7 @@ UISManager::FindOrAddTarget(team_id team, port_id port, int32 token)
 
 	UISTarget *target;
 
-	for (int32 i = 0; i<fTargetList.CountItems(); i++) {
+	for (int32 i = 0; i < fTargetList.CountItems(); i++) {
 		target = (UISTarget *) fTargetList.ItemAt(i);
 		if (target->HasTarget(port, token)) {
 			target->IncRef();

@@ -3,8 +3,8 @@
 #include <OS.h>
 #include <UTF8.h>
 
+#include <uis_driver.h>
 #include <UISProtocol.h>
-#include "kb_mouse_driver.h"
 
 #include <stdlib.h>
 #include <string.h>

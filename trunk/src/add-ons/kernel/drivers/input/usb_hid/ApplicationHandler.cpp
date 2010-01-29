@@ -10,12 +10,12 @@
 #include <new>
 #include <stdlib.h>
 
-#include "kb_mouse_driver.h"
+#include "uis_driver.h"
 
 
 #ifdef TRACE
 #undef TRACE
-#define TRACE(a...) dprintf("\33[34mjoy_dev:\33[0m " a)
+#define TRACE(a...) dprintf("\33[34musb_hid_uis:\33[0m " a)
 #endif
 ApplicationHandler::ApplicationHandler(HIDDevice *device, uint32 usage)
 	:
