@@ -18,6 +18,7 @@ public:
 	bool			HasPath(const char *path);
 	bool			HasName(const char *name);
 
+	const char *	Path() { return fPath; };
 	const char *	Name() { return fName.String(); };
 	uint32			Usage() { return fUsage; };
 	uint8			CountReports(uint8 type);

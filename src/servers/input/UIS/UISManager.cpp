@@ -130,41 +130,11 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 		return status;
 
 	switch (opcode) {
-		case B_UIS_GET_DEVICES:
-			{
-				BAutolock lock(fUISDeviceListLocker);
-				if (lock.IsLocked()) {
-					UISDevice *device;
-					for (int32 i = 0; i < fUISDeviceList.CountItems(); i++) {
-						device = (UISDevice *) fUISDeviceList.ItemAt(i);
-
-						BMessage msg('Ihdf');
-						status = msg.AddInt32("usage", device->Usage());
-						if (status != B_OK)
-							break;
-						status = msg.AddInt8("input reports",
-							device->CountReports(0));
-						if (status != B_OK)
-							break;
-						status = msg.AddString("name", device->Name());
-						if (status != B_OK)
-							break;
-						status = msg.AddPointer("device", device);
-						if (status != B_OK)
-							break;
-
-						status = reply->AddMessage("uis device", &msg);
-						if (status != B_OK)
-							break;
-					}
-				}
-				break;
-			}
-
 		case B_UIS_FIND_DEVICE:
 			{
-				const char *name;
-				if (message->FindString("name", &name) != B_OK)
+				const char *name = NULL, *path = NULL;
+				if (message->FindString("name", &name) != B_OK
+						&& message->FindString("path", &path) != B_OK)
 					break;
 
 				BAutolock lock(fUISDeviceListLocker);
@@ -172,19 +142,74 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 					UISDevice *device;
 					for (int32 i = 0; i < fUISDeviceList.CountItems(); i++) {
 						device = (UISDevice *) fUISDeviceList.ItemAt(i);
-						//TRACE("cmp %s, %s\n", name, device->Name());
-						if (device->HasName(name)) {
+						if ((name != NULL && device->HasName(name))
+								|| (path != NULL && device->HasPath(path))) {
+							status = reply->AddPointer("device", device);
+							if (status != B_OK)
+								break;
+							status = reply->AddString("name", device->Name());
+							if (status != B_OK)
+								break;
 							status = reply->AddInt32("usage",
 								device->Usage());
 							if (status != B_OK)
 								break;
-							status = reply->AddInt8("input reports",
+							return reply->AddInt32("input reports",
 								device->CountReports(0));
-							if (status != B_OK)
-								break;
-							return reply->AddPointer("device", device);
 						}
 					}
+				}
+				break;
+			}
+
+		case B_UIS_COUNT_DEVICES:
+			{
+				BAutolock lock(fUISDeviceListLocker);
+				if (lock.IsLocked())
+					return reply->AddInt32("devices",
+						fUISDeviceList.CountItems());
+			}
+
+		case B_UIS_GET_DEVICE:
+			{
+				int32 index;
+				if (message->FindInt32("index", &index) != B_OK)
+					break;
+
+				BAutolock lock(fUISDeviceListLocker);
+				if (lock.IsLocked()) {
+					UISDevice *device =
+						(UISDevice *) fUISDeviceList.ItemAt(index);
+					if (device) {
+						status = reply->AddPointer("device", device);
+						if (status != B_OK)
+							break;
+						status = reply->AddString("name", device->Name());
+						if (status != B_OK)
+							break;
+						status = reply->AddInt32("usage", device->Usage());
+						if (status != B_OK)
+							break;
+						return reply->AddInt32("input reports",
+							device->CountReports(0));
+					}
+				}
+				break;
+			}
+
+		case B_UIS_GET_DEVICE_PATH:
+			{
+				int32 index;
+				if (message->FindInt32("index", &index) != B_OK)
+					break;
+
+				BAutolock lock(fUISDeviceListLocker);
+				if (lock.IsLocked()) {
+					UISDevice *device =
+						(UISDevice *) fUISDeviceList.ItemAt(index);
+					if (device)
+						return reply->AddString("path", device->Path());
+					return B_BAD_INDEX;
 				}
 				break;
 			}
@@ -192,19 +217,19 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 		case B_UIS_GET_REPORT:
 			{
 				UISDevice *device;
-				uint8 index;
+				int32 index;
 				if (message->FindPointer("device", (void **) &device) != B_OK
-						|| message->FindInt8("index", (int8 *) &index) != B_OK)
+						|| message->FindInt32("index", &index) != B_OK)
 					break;
 
 				BAutolock lock(fUISDeviceListLocker);
 				if (lock.IsLocked() && fUISDeviceList.HasItem(device)) {
 					UISReport *report = device->ReportAt(0, index);
 					if (report != NULL) {
-						status = reply->AddInt32("items", report->CountItems());
+						status = reply->AddPointer("report", report);
 						if (status != B_OK)
 							break;
-						return reply->AddPointer("report", report);
+						return reply->AddInt32("items", report->CountItems());
 					}
 				}
 			}
@@ -223,10 +248,63 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 				if (lock.IsLocked() && fUISDeviceList.HasItem(device)) {
 					UISReportItem *item = report->ItemAt(index);
 					if (item != NULL) {
-						status = reply->AddInt16("id", item->Id());
+						status = reply->AddPointer("item", item);
 						if (status != B_OK)
 							break;
-						return reply->AddPointer("item", item);
+						status = reply->AddInt16("page", item->UsagePage());
+						if (status != B_OK)
+							break;
+						status = reply->AddInt16("id", item->UsageId());
+						if (status != B_OK)
+							break;
+						status = reply->AddInt32("min", item->Minimum());
+						if (status != B_OK)
+							break;
+						return reply->AddInt32("max", item->Maximum());
+					}
+				}
+			}
+
+		case B_UIS_FIND_ITEM:
+			{
+				UISDevice *device;
+				uint32 usage;
+				if (message->FindPointer("device", (void **) &device) != B_OK
+					|| message->FindInt32("usage", (int32 *) &usage) != B_OK)
+					break;
+
+				BAutolock lock(fUISDeviceListLocker);
+				if (lock.IsLocked() && fUISDeviceList.HasItem(device)) {
+					uint16 usagePage = usage >> 16;
+					uint16 usageId = usage & 0xffff;
+
+					for (int32 ir = 0; ir < device->CountReports(0); ir++) {
+						UISReport *report = device->ReportAt(0, ir);
+						for (int32 ii = 0; ii < report->CountItems(); ii++) {
+							UISReportItem *item = report->ItemAt(ii);
+							if (item->UsagePage() == usagePage
+									&& item->UsageId() == usageId) {
+								//TRACE("found item\n");
+								status = reply->AddPointer("report", report);
+								if (status != B_OK)
+									break;
+								status = reply->AddPointer("item", item);
+								if (status != B_OK)
+									break;
+								status = reply->AddInt16("page",
+									item->UsagePage());
+								if (status != B_OK)
+									break;
+								status = reply->AddInt16("id", item->UsageId());
+								if (status != B_OK)
+									break;
+								status = reply->AddInt32("min",
+									item->Minimum());
+								if (status != B_OK)
+									break;
+								return reply->AddInt32("max", item->Maximum());
+							}
+						}
 					}
 				}
 			}
@@ -241,14 +319,18 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 					|| message->FindPointer("target", &target) != B_OK)
 					break;
 
-				team_id team = -1;
-				port_id port = -1;
-				int32 token = B_NULL_TOKEN;
-				void *cookie = NULL;
-				message->FindInt32("team id", (int32 *) &team);
-				message->FindInt32("looper port", (int32 *) &port);
-				message->FindInt32("object token", &token);
-				message->FindPointer("cookie", &cookie);
+				team_id team;
+				if (message->FindInt32("team id", (int32 *) &team) != B_OK)
+					team = -1;
+				port_id port;
+				if (message->FindInt32("looper port", (int32 *) &port) != B_OK)
+					port = -1;
+				int32 token;
+				if (message->FindInt32("object token", &token) != B_OK)
+					token = B_NULL_TOKEN;
+				void *cookie;
+				if (message->FindPointer("cookie", &cookie) != B_OK)
+					cookie = NULL;
 
 				BAutolock lock(fUISDeviceListLocker);
 				if (lock.IsLocked() && fUISDeviceList.HasItem(device)) {
@@ -322,6 +404,7 @@ UISManager::SendEvent(uis_item_target *itemTarget, UISReportItem *item)
 		message.AddInt32("value", (int32) item->Value());
 
 		status_t status = target->SendMessage(&message);
+		//TRACE("send msg status = %08x\n", status);
 		if (status == B_BAD_PORT_ID)
 			RemoveTarget(target);
 

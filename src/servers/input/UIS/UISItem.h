@@ -23,8 +23,11 @@ public:
 	status_t	InitCheck();
 	void		SetValue(uint32 value);
 
-	uint16		Id() { return fUsageId; };
+	uint16		UsagePage() { return fUsagePage; };
+	uint16		UsageId() { return fUsageId; };
 	bool		IsRelative() { return fIsRelative; };
+	uint32		Minimum() { return fMinimum; };
+	uint32		Maximum() { return fMaximum; };
 	uint32		Value() { return fValue; };
 
 	void		SetTarget(team_id team, port_id port, int32 token, void *cookie,
