@@ -78,6 +78,8 @@ void
 UISReportItem::SetTarget(team_id team, port_id port, int32 token, void *cookie,
 	void **target)
 {
+	//TRACE("team: %d, port: %d, token: %d, cookie: %08x, target: %08x\n",
+	//	team, port, token, cookie, *target);
 	uis_item_target *itemTarget = (uis_item_target *) *target;
 	UISManager *manager = fUISReport->Device()->Manager();
 
