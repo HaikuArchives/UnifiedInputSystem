@@ -1,0 +1,1 @@
+/boot/home/src/haiku/haiku/headers/private/interface/UISProtocol.h

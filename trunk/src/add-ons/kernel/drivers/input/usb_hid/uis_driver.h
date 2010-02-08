@@ -1,0 +1,1 @@
+/boot/home/src/haiku/haiku/headers/private/input/uis_driver.h
