@@ -14,13 +14,21 @@ using std::nothrow;
 #include "UIS_debug.h"
 
 
-UISDevice::UISDevice(UISManager *manager, const char *path)
+UISDevice::UISDevice(uis_device_id id, UISManager *manager, const char *path)
 	:
+	fDeviceId(id),
 	fUISManager(manager),
 	fPath(strdup(path)),
 	fDevice(-1),
 	fUsage(0)
 {
+	fReports[0] = NULL;
+	fReports[1] = NULL;
+	fReports[2] = NULL;
+	fReportsCount[0] = 0;
+	fReportsCount[1] = 0;
+	fReportsCount[2] = 0;
+
 	TRACE("create device at %s\n", path);
 
 	fDevice = open(fPath, O_RDWR);
@@ -37,16 +45,22 @@ UISDevice::UISDevice(UISManager *manager, const char *path)
 	//TRACE("usage: %08x, input report count: %d, name: %d\n", fUsage,
 	//	info.reportCount, info.name);
 
-	for (uint8 n = 0; n < info.reportCount; n++) {
-		UISReport *report = new (std::nothrow) UISReport(fDevice, this, 1, n);
-			// FIXME: un-fix the report type
-		if (report == NULL)
-			break;
-		if (report->InitCheck() != B_OK) {
-			delete report;
-			break;
+	for (uint8 type = 0; type < 3; type ++) {
+		fReports[type] = new (std::nothrow) UISReport *[info.reportCount[type]];
+		if (fReports[type] == NULL)
+			return;
+		for (int32 i = 0; i < info.reportCount[type]; i++) {
+			UISReport *report = new (std::nothrow) UISReport(fDevice, this,
+				1, i);
+					// FIXME: un-fix the report type
+			if (report == NULL)
+				break;
+			if (report->InitCheck() != B_OK) {
+				delete report;
+				break;
+			}
+			fReports[type][fReportsCount[type]++] = report;
 		}
-		fReportList[0].AddItem(report);
 	}
 }
 
@@ -55,7 +69,11 @@ UISDevice::~UISDevice()
 {
 	TRACE("delete device at: %s\n", fPath);
 
-	fReportList[0].DoForEach(_RemoveReportListItem);
+	for (uint8 type = 0; type < 3; type ++) {
+		for (int32 n = 0; n < fReportsCount[type]; n++)
+			delete fReports[type][n];
+		delete [] fReports[type];
+	}
 
 	//TRACE("will close the device\n");
 	if (fDevice != -1) {
@@ -64,14 +82,6 @@ UISDevice::~UISDevice()
 	}
 
 	free(fPath);
-}
-
-
-bool
-UISDevice::_RemoveReportListItem(void *arg)
-{
-	delete (UISReport *) arg;
-	return false;
 }
 
 
@@ -92,24 +102,24 @@ UISDevice::HasName(const char *name)
 }
 
 
-uint8
+int32
 UISDevice::CountReports(uint8 type)
 {
-	return (type < 3) ? (uint8) fReportList[type].CountItems() : 0;
+	return (type < 3) ? fReportsCount[type] : 0;
 }
 
 
 UISReport *
-UISDevice::ReportAt(uint8 type, uint8 index)
+UISDevice::ReportAt(uint8 type, int32 index)
 {
 	if (index >= CountReports(type))
 		return NULL;
-	return (UISReport *) fReportList[type].ItemAt(index);
+	return fReports[type][index];
 }
 
 
 void
 UISDevice::Remove()
 {
-	fUISManager->RemoveDevice(this);
+	fUISManager->RemoveDevice(fDeviceId);
 }

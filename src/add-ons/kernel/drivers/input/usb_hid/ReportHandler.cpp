@@ -56,8 +56,6 @@ ReportHandler::Control(uint32 op, void *buffer, size_t length)
 				info->out.usagePage = item->UsagePage();
 				info->out.usageId = item->UsageID();
 				info->out.isRelative = item->Relative();
-				info->out.min = item->Minimum();
-				info->out.max = item->Maximum();
 				return B_OK;
 			}
 
@@ -81,7 +79,6 @@ ReportHandler::Control(uint32 op, void *buffer, size_t length)
 			}
 
 		case UIS_STOP:
-			TRACE("fake set report\n");
 			fReport->SetReport(B_ERROR, NULL, 0);
 				// fake report for releasing
 			return B_OK;
@@ -101,10 +98,9 @@ ReportHandler::_ReadReport()
 			return B_DEV_NOT_READY;
 		}
 
-		if (result == B_ERROR) {
-			TRACE("::_ReadReport leaving with B_ERROR");
+		if (result == B_ERROR)
 			return B_ERROR;
-		}
+				// wake and exit thread
 
 		if (result != B_INTERRUPTED) {
 			// interrupts happen when other reports come in on the same
@@ -129,7 +125,18 @@ ReportHandler::_ReadReport()
 		if (item->Extract() == B_OK && item->Valid()
 				&& item->HasDataChanged()) {
 			data->out.item[data->out.items].index = i;
-			data->out.item[data->out.items++].value = item->Data();
+
+			if (item->Maximum() - item->Minimum() == 1) {
+				data->out.item[data->out.items++].value
+					= (item->Data() == item->Maximum()) ? 1.0f : 0.0f;
+			} else {
+				float value = (float) item->Data() - (item->Minimum()
+					+ item->Maximum()) / 2.0f;
+				if (value > -1.0f && value < 1.0f)
+					value = 0.0f;
+				value *= 2.0f / (item->Maximum() - item->Minimum());
+				data->out.item[data->out.items++].value = value;
+			}
 		}
 	}
 

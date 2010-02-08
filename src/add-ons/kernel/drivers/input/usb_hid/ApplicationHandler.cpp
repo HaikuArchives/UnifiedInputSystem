@@ -127,7 +127,9 @@ ApplicationHandler::Control(uint32 op, void *buffer, size_t length)
 			{
 				uis_device_info *info = (uis_device_info *) buffer;
 				info->usage = fUsage;
-				info->reportCount = fReportHandlerCount;
+				info->reportCount[0] = fReportHandlerCount;
+				info->reportCount[1] = 0;
+				info->reportCount[2] = 0;
 				info->name = fDevice->Name();
 				return B_OK;
 			}
@@ -135,6 +137,7 @@ ApplicationHandler::Control(uint32 op, void *buffer, size_t length)
 		case UIS_REPORT_INFO:
 			{
 				uis_report_info *info = (uis_report_info *) buffer;
+				// here I could check the type also
 				if (info->in.index >= fReportHandlerCount)
 					return B_ERROR; // FIXME
 				ReportHandler *report = fReportHandlers[info->in.index];

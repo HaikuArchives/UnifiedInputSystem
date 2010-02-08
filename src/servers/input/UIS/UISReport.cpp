@@ -14,7 +14,7 @@ using std::nothrow;
 #include "UIS_debug.h"
 
 
-static const uint32 kReportReaderThreadPriority = B_FIRST_REAL_TIME_PRIORITY+4;
+static const uint32 kReportThreadPriority = B_FIRST_REAL_TIME_PRIORITY + 4;
 
 
 UISReport::UISReport(int fd, UISDevice *device, uint8 type, uint8 index)
@@ -26,7 +26,9 @@ UISReport::UISReport(int fd, UISDevice *device, uint8 type, uint8 index)
 	fReport(NULL),
 	fId(0),
 	fReadingThread(-1),
-	fThreadActive(false)
+	fThreadActive(false),
+	fItems(NULL),
+	fItemsCount(0)
 {
 	uis_report_info reportDesc;
 	reportDesc.in.type = type;
@@ -39,20 +41,18 @@ UISReport::UISReport(int fd, UISDevice *device, uint8 type, uint8 index)
 	//TRACE("create report type: %d, id: %d, items: %d\n", fType, fId,
 	//	reportDesc.out.itemCount);
 
-	uint32 n = 0;
-	for ( ; n < reportDesc.out.itemCount; n++) {
-		UISReportItem *item = new (std::nothrow) UISReportItem(fd, this, n);
-			if (item == NULL)
-				break;
-			if (item->InitCheck() != B_OK) {
-				delete item;
-				break;
-			}
-			fItemList.AddItem(item);
-	}
-	if (n < reportDesc.out.itemCount) {
-		fStatus = B_NO_INIT; // FIXME
+	fItems = new (std::nothrow) UISReportItem *[reportDesc.out.itemCount];
+	if (fItems == NULL)
 		return;
+	for (int32 n = 0 ; n < reportDesc.out.itemCount; n++) {
+		UISReportItem *item = new (std::nothrow) UISReportItem(fd, this, n);
+		if (item == NULL)
+			break;
+		if (item->InitCheck() != B_OK) {
+			delete item;
+			break;
+		}
+		fItems[fItemsCount++] = item;
 	}
 
 	char threadName[B_OS_NAME_LENGTH];
@@ -60,7 +60,7 @@ UISReport::UISReport(int fd, UISDevice *device, uint8 type, uint8 index)
 		(unsigned int) this);
 		// FIXME: fix the name of the thread
 	fReadingThread = spawn_thread(_ReadingThreadEntry, threadName,
-		kReportReaderThreadPriority, (void *) this);
+		kReportThreadPriority, (void *) this);
 
 	if (fReadingThread < B_OK) {
 		fStatus = fReadingThread;
@@ -91,15 +91,9 @@ UISReport::~UISReport()
 		}
 	}
 
-	fItemList.DoForEach(_RemoveItemListItem);
-}
-
-
-bool
-UISReport::_RemoveItemListItem(void *arg)
-{
-	delete (UISReportItem *) arg;
-	return false;
+	for (int32 i = 0 ; i < fItemsCount; i++)
+		delete fItems[i];
+	delete [] fItems;
 }
 
 
@@ -107,11 +101,12 @@ void
 UISReport::SetReport(uis_report_data *data)
 {
 	//TRACE("has items: %d\n", data->out.items);
-	for (uint32 i = 0; i < data->out.items; i++) {
+	for (int32 i = 0; i < data->out.items; i++) {
 		//TRACE("index of item: %d\n", data->out.item[i].index);
-		UISReportItem *item = (UISReportItem *)
-			fItemList.ItemAt(data->out.item[i].index); // TODO: check numbering
-		item->SetValue(data->out.item[i].value);
+		UISReportItem *item = ItemAt(data->out.item[i].index);
+			// TODO: check numbering
+		if (item != NULL)
+			item->SetValue(data->out.item[i].value);
 		//TRACE("set value report %d %d %08x\n", fType, fId, i);
 	}
 }
@@ -122,7 +117,7 @@ UISReport::ItemAt(int32 index)
 {
 	if (index >= CountItems())
 		return NULL;
-	return (UISReportItem *) fItemList.ItemAt(index);
+	return fItems[index];
 }
 
 
@@ -156,7 +151,7 @@ UISReport::_ReadingThread()
 				delete [] buffer;
 				fThreadActive = false;
 				fUISDevice->Remove();
-				// BONKERS !
+					// BONKERS !
 				return;
 			}
 

@@ -10,7 +10,7 @@
 #include "UIS_debug.h"
 
 
-UISReportItem::UISReportItem(int fd, UISReport *report, uint32 index)
+UISReportItem::UISReportItem(int fd, UISReport *report, int32 index)
 	:
 	fUISReport(report),
 	fItem(NULL)
@@ -24,14 +24,9 @@ UISReportItem::UISReportItem(int fd, UISReport *report, uint32 index)
 	fUsagePage = itemDesc.out.usagePage;
 	fUsageId = itemDesc.out.usageId;
 	fIsRelative = itemDesc.out.isRelative;
-	fMinimum = itemDesc.out.min;
-	fMaximum = itemDesc.out.max;
 	//TRACE("create item usage page: %04x id: %04x, relative: %s, min: %ld, "
 	//	"max: %ld\n", fUsagePage, fUsageId, fIsRelative?"yes":"no",
 	//	fMinimum, fMaximum);
-	fTeamId = -1;
-	fPortId = -1;
-	fObjectToken = B_NULL_TOKEN;
 }
 
 
@@ -49,7 +44,7 @@ UISReportItem::InitCheck()
 
 
 void
-UISReportItem::SetValue(uint32 value)
+UISReportItem::SetValue(float value)
 {
 	fValue = value;
 	//TRACE("set value for item %04x %04x: %08x\n", fUsagePage, fUsageId, fValue);

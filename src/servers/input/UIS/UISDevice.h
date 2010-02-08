@@ -1,7 +1,7 @@
 #ifndef _UIS_DEVICE_H
 #define _UIS_DEVICE_H
 
-#include <List.h>
+#include <UISKit.h>
 
 #include "UISString.h"
 
@@ -11,7 +11,8 @@ class UISManager;
 
 class UISDevice {
 public:
-					UISDevice(UISManager *manager, const char *path);
+					UISDevice(uis_device_id id, UISManager *manager,
+						const char *path);
 					~UISDevice();
 
 	UISManager *	Manager() { return fUISManager; };
@@ -21,20 +22,20 @@ public:
 	const char *	Path() { return fPath; };
 	const char *	Name() { return fName.String(); };
 	uint32			Usage() { return fUsage; };
-	uint8			CountReports(uint8 type);
-	UISReport *		ReportAt(uint8 type, uint8 index);
+	int32			CountReports(uint8 type);
+	UISReport *		ReportAt(uint8 type, int32 index);
 
 	void			Remove();
 
 private:
-	static bool		_RemoveReportListItem(void *arg);
-
+	uis_device_id	fDeviceId;
 	UISManager *	fUISManager;
 	char *			fPath;
 	int				fDevice;
 	UISString		fName;
 	uint32			fUsage;
-	BList			fReportList[3];
+	UISReport **	fReports[3];
+	int32			fReportsCount[3];
 };
 
 #endif // _UIS_DEVICE_H

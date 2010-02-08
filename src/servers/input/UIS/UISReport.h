@@ -2,7 +2,6 @@
 #define _UIS_REPORT_H
 
 #include <Message.h>
-#include <List.h>
 
 
 union _uis_report_data;
@@ -22,11 +21,10 @@ public:
 	void *			Report() { return fReport; };
 
 	void			SetReport(uis_report_data *data);
-	int32			CountItems() { return fItemList.CountItems(); };
+	int32			CountItems() { return fItemsCount; };
 	UISReportItem *	ItemAt(int32 index);
 
 private:
-	static bool		_RemoveItemListItem(void *arg);
 	static status_t	_ReadingThreadEntry(void *arg);
 	void			_ReadingThread();
 
@@ -38,7 +36,8 @@ private:
 	uint8			fId;
 	thread_id		fReadingThread;
 	volatile bool	fThreadActive;
-	BList			fItemList;
+	UISReportItem **	fItems;
+	int32			fItemsCount;
 };
 
 
