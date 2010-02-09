@@ -3,6 +3,8 @@
 
 #include <SupportDefs.h>
 
+#include "uis_driver.h"
+
 class HIDDevice;
 class HIDReport;
 class ReportHandler;
@@ -34,8 +36,8 @@ private:
 	uint32				fUsage;
 	char *				fPublishPath;
 	char *				fName;
-	uint8				fReportHandlerCount;
-	ReportHandler **	fReportHandlers;
+	ReportHandler **	fReportHandlers[UIS_REPORT_TYPES];
+	uint8				fReportHandlerCount[UIS_REPORT_TYPES];
 };
 
 #endif // _APPLICATION_HANDLER_H

@@ -2,7 +2,6 @@
 #include "UISManager.h"
 #include "UISReport.h"
 
-#include <uis_driver.h>
 #include <UISProtocol.h>
 
 #include <stdlib.h>
@@ -22,12 +21,12 @@ UISDevice::UISDevice(uis_device_id id, UISManager *manager, const char *path)
 	fDevice(-1),
 	fUsage(0)
 {
-	fReports[0] = NULL;
-	fReports[1] = NULL;
-	fReports[2] = NULL;
-	fReportsCount[0] = 0;
-	fReportsCount[1] = 0;
-	fReportsCount[2] = 0;
+	fReports[UIS_REPORT_TYPE_INPUT] = NULL;
+	fReports[UIS_REPORT_TYPE_OUTPUT] = NULL;
+	fReports[UIS_REPORT_TYPE_FEATURE] = NULL;
+	fReportsCount[UIS_REPORT_TYPE_INPUT] = 0;
+	fReportsCount[UIS_REPORT_TYPE_OUTPUT] = 0;
+	fReportsCount[UIS_REPORT_TYPE_FEATURE] = 0;
 
 	TRACE("create device at %s\n", path);
 
@@ -45,14 +44,13 @@ UISDevice::UISDevice(uis_device_id id, UISManager *manager, const char *path)
 	//TRACE("usage: %08x, input report count: %d, name: %d\n", fUsage,
 	//	info.reportCount, info.name);
 
-	for (uint8 type = 0; type < 3; type ++) {
+	for (uint8 type = 0; type < UIS_REPORT_TYPES; type ++) {
 		fReports[type] = new (std::nothrow) UISReport *[info.reportCount[type]];
 		if (fReports[type] == NULL)
 			return;
 		for (int32 i = 0; i < info.reportCount[type]; i++) {
 			UISReport *report = new (std::nothrow) UISReport(fDevice, this,
-				1, i);
-					// FIXME: un-fix the report type
+				type, i);
 			if (report == NULL)
 				break;
 			if (report->InitCheck() != B_OK) {
@@ -69,13 +67,12 @@ UISDevice::~UISDevice()
 {
 	TRACE("delete device at: %s\n", fPath);
 
-	for (uint8 type = 0; type < 3; type ++) {
+	for (uint8 type = 0; type < UIS_REPORT_TYPES; type ++) {
 		for (int32 n = 0; n < fReportsCount[type]; n++)
 			delete fReports[type][n];
 		delete [] fReports[type];
 	}
 
-	//TRACE("will close the device\n");
 	if (fDevice != -1) {
 		close(fDevice);
 		fDevice = -1;

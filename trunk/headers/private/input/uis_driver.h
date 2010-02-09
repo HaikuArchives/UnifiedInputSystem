@@ -15,6 +15,14 @@ enum {
 };
 
 
+enum {
+	UIS_REPORT_TYPE_INPUT = 0,
+	UIS_REPORT_TYPE_OUTPUT,
+	UIS_REPORT_TYPE_FEATURE,
+	UIS_REPORT_TYPES,
+};
+
+
 typedef struct {
 	uint32	usage;
 	int32	reportCount[3];

@@ -10,8 +10,6 @@
 #include <new>
 #include <stdlib.h>
 
-#include "uis_driver.h"
-
 
 #ifdef TRACE
 #undef TRACE
@@ -21,18 +19,26 @@ ApplicationHandler::ApplicationHandler(HIDDevice *device, uint32 usage)
 	:
 	fDevice(device),
 	fUsage(usage),
-	fPublishPath(NULL),
-	fReportHandlerCount(0),
-	fReportHandlers(NULL)
+	fPublishPath(NULL)
 {
+	fReportHandlers[UIS_REPORT_TYPE_INPUT] = NULL;
+	fReportHandlers[UIS_REPORT_TYPE_OUTPUT] = NULL;
+	fReportHandlers[UIS_REPORT_TYPE_FEATURE] = NULL;
+	fReportHandlerCount[UIS_REPORT_TYPE_INPUT] = 0;
+	fReportHandlerCount[UIS_REPORT_TYPE_OUTPUT] = 0;
+	fReportHandlerCount[UIS_REPORT_TYPE_FEATURE] = 0;
 }
 
 
 ApplicationHandler::~ApplicationHandler()
 {
-	while (fReportHandlerCount--)
-		delete fReportHandlers[fReportHandlerCount];
-	free(fReportHandlers);
+	for (uint8 i = 0; i < UIS_REPORT_TYPES; i++) {
+		while (fReportHandlerCount[i]--)
+			delete fReportHandlers[i][fReportHandlerCount[i]];
+
+		free(fReportHandlers[i]);
+	}
+
 	free(fPublishPath);
 }
 
@@ -48,16 +54,18 @@ ApplicationHandler::AddReport(HIDReport *report)
 		return;
 	}
 
+	uint8 type = report->TypeId();
+
 	ReportHandler **reportHandlers = (ReportHandler **)
-		realloc(fReportHandlers, sizeof(ReportHandler **)
-		* fReportHandlerCount + 1);
+		realloc(fReportHandlers[type], sizeof(ReportHandler *)
+		* fReportHandlerCount[type] + 1);
 	if (reportHandlers == NULL) {
 		TRACE("no memory for report handlers list\n");
 		delete handler;
 		return;
 	}
-	fReportHandlers = reportHandlers;
-	fReportHandlers[fReportHandlerCount++] = handler;
+	fReportHandlers[type] = reportHandlers;
+	fReportHandlers[type][fReportHandlerCount[type]++] = handler;
 }
 
 
@@ -79,25 +87,37 @@ ApplicationHandler::AddHandlers(HIDDevice *device,
 
 	*handlerList = NULL;
 	*handlerCount = 0;
-	for (uint8 i = 0; i < parser->CountReports(HID_REPORT_TYPE_INPUT); i++) {
-		HIDReport *report = parser->ReportAt(HID_REPORT_TYPE_INPUT, i);
+	for (uint8 i = 0; i < parser->CountReports(HID_REPORT_TYPE_ANY); i++) {
+		HIDReport *report = parser->ReportAt(HID_REPORT_TYPE_ANY, i);
 		if (report == NULL)
 			continue;
+
 		ApplicationHandler *handler = NULL;
-		if (*handlerList == NULL) {
-			handler = new(std::nothrow)
-				ApplicationHandler(device, report->ApplicationUsage());
-			if (handler != NULL) {
-				*handlerList = (ApplicationHandler **)
-					malloc(sizeof(ApplicationHandler *));
-				if (*handlerList == NULL) {
-					TRACE("out of memory allocating application handler list\n");
-					return;
-				}
+		for (uint8 ai = 0; ai < *handlerCount; ai++) {
+			if ((*handlerList)[ai]->Usage() == report->ApplicationUsage()) {
+				handler = *handlerList[ai];
+				break;
 			}
-		} else {
 		}
-		*handlerList[(*handlerCount)++] = handler;
+
+		if (handler == NULL) {
+			handler = new(std::nothrow) ApplicationHandler(device,
+					report->ApplicationUsage());
+			if (handler == NULL)
+				continue;
+
+			ApplicationHandler **handlers = (ApplicationHandler **)
+				realloc(*handlerList, sizeof(ApplicationHandler *)
+					* *handlerCount + 1);
+			if (handlers == NULL) {
+				TRACE("out of memory allocating application handler list\n");
+				return;
+			}
+
+			*handlerList = handlers;
+			*handlerList[(*handlerCount)++] = handler;
+		}
+
 		handler->AddReport(report);
 	}
 
@@ -127,9 +147,8 @@ ApplicationHandler::Control(uint32 op, void *buffer, size_t length)
 			{
 				uis_device_info *info = (uis_device_info *) buffer;
 				info->usage = fUsage;
-				info->reportCount[0] = fReportHandlerCount;
-				info->reportCount[1] = 0;
-				info->reportCount[2] = 0;
+				for (uint8 i = 0; i < UIS_REPORT_TYPES; i++)
+					info->reportCount[i] = fReportHandlerCount[i];
 				info->name = fDevice->Name();
 				return B_OK;
 			}
@@ -137,10 +156,10 @@ ApplicationHandler::Control(uint32 op, void *buffer, size_t length)
 		case UIS_REPORT_INFO:
 			{
 				uis_report_info *info = (uis_report_info *) buffer;
-				// here I could check the type also
-				if (info->in.index >= fReportHandlerCount)
+				if (info->in.index >= fReportHandlerCount[info->in.type])
 					return B_ERROR; // FIXME
-				ReportHandler *report = fReportHandlers[info->in.index];
+				ReportHandler *report
+					= fReportHandlers[info->in.type][info->in.index];
 				if (report == NULL)
 					return B_ERROR; // FIXME
 				info->out.report = report;

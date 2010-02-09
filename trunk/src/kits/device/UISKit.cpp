@@ -114,6 +114,7 @@ BUISDevice::BUISDevice(uis_device_id device)
 	:
 	fDevice(device),
 	fName(NULL),
+	fPath(NULL),
 	fUsage(0),
 	fInputReports(0),
 	fStatus(B_NO_INIT)
@@ -142,6 +143,7 @@ BUISDevice::BUISDevice(uis_device_id device)
 BUISDevice::~BUISDevice()
 {
 	free(fName);
+	free(fPath);
 }
 
 

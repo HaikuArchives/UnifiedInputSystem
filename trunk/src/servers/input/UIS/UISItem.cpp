@@ -24,9 +24,8 @@ UISReportItem::UISReportItem(int fd, UISReport *report, int32 index)
 	fUsagePage = itemDesc.out.usagePage;
 	fUsageId = itemDesc.out.usageId;
 	fIsRelative = itemDesc.out.isRelative;
-	//TRACE("create item usage page: %04x id: %04x, relative: %s, min: %ld, "
-	//	"max: %ld\n", fUsagePage, fUsageId, fIsRelative?"yes":"no",
-	//	fMinimum, fMaximum);
+	TRACE("create item usage page: %04x id: %04x, relative: %s\n",
+		fUsagePage, fUsageId, fIsRelative?"yes":"no");
 }
 
 

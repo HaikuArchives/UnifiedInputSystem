@@ -38,8 +38,8 @@ UISReport::UISReport(int fd, UISDevice *device, uint8 type, uint8 index)
 		return;
 	fReport = reportDesc.out.report;
 	fId = reportDesc.out.id;
-	//TRACE("create report type: %d, id: %d, items: %d\n", fType, fId,
-	//	reportDesc.out.itemCount);
+	TRACE("create report type: %d, id: %d, items: %d\n", fType, fId,
+		reportDesc.out.itemCount);
 
 	fItems = new (std::nothrow) UISReportItem *[reportDesc.out.itemCount];
 	if (fItems == NULL)
@@ -76,7 +76,7 @@ UISReport::UISReport(int fd, UISDevice *device, uint8 type, uint8 index)
 
 UISReport::~UISReport()
 {
-	TRACE("delete report type: %d, id: %d\n", fType, fId);
+	//TRACE("delete report type: %d, id: %d\n", fType, fId);
 
 	//TRACE("will stop the thread\n");
 	if (fThreadActive) {
