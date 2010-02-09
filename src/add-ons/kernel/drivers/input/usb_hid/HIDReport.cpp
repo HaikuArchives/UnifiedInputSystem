@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "uis_driver.h"
+
 
 HIDReport::HIDReport(HIDParser *parser, uint8 type, uint8 id,
 	uint32 applicationUsage)
@@ -35,6 +37,21 @@ HIDReport::HIDReport(HIDParser *parser, uint8 type, uint8 id,
 HIDReport::~HIDReport()
 {
 	free(fItems);
+}
+
+
+uint8
+HIDReport::TypeId()
+{
+	switch (fType) {
+		case HID_REPORT_TYPE_OUTPUT:
+			return UIS_REPORT_TYPE_OUTPUT;
+		case HID_REPORT_TYPE_FEATURE:
+			return UIS_REPORT_TYPE_FEATURE;
+		case HID_REPORT_TYPE_INPUT:
+		default:
+			return UIS_REPORT_TYPE_INPUT;
+	}
 }
 
 

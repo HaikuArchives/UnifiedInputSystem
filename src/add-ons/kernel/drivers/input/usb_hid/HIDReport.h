@@ -24,6 +24,7 @@ public:
 								~HIDReport();
 
 		uint8					Type() { return fType; };
+		uint8					TypeId();
 		uint8					ID() { return fReportID; };
 		size_t					ReportSize() { return (fReportSize + 7) / 8; };
 		uint32					ApplicationUsage()

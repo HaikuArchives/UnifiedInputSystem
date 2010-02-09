@@ -1,6 +1,7 @@
 #ifndef _UIS_DEVICE_H
 #define _UIS_DEVICE_H
 
+#include <uis_driver.h>
 #include <UISKit.h>
 
 #include "UISString.h"
@@ -34,8 +35,8 @@ private:
 	int				fDevice;
 	UISString		fName;
 	uint32			fUsage;
-	UISReport **	fReports[3];
-	int32			fReportsCount[3];
+	UISReport **	fReports[UIS_REPORT_TYPES];
+	int32			fReportsCount[UIS_REPORT_TYPES];
 };
 
 #endif // _UIS_DEVICE_H

@@ -51,14 +51,14 @@ JoystickLooper::MessageReceived(BMessage *message)
 					if (i < 0)
 						break;
 					fJoystick->fAxesValues[i] = (int16) (value * 32767);
-					printf("i: %d, v: %d\n", i, fJoystick->fAxesValues[i]);
+					//printf("i: %d, v: %d\n", i, fJoystick->fAxesValues[i]);
 					break;
 				}
 
 			case HID_USAGE_PAGE_BUTTON:
 				{
 					int32 i = fJoystick->fButtonsList->IndexOf(item);
-					printf("i: %d, v: %g\n", i, value);
+					//printf("i: %d, v: %g\n", i, value);
 					if (i < 0)
 						break;
 					if (value != 0.0f)
@@ -173,7 +173,7 @@ BJoystick::Open(const char *devName, bool enterEnhanced)
 	memset(fHatsValues, 0, CountHats() * sizeof(uint8));
 
 	return 1;
-		// according to BeBook it should return positive integer on success
+		// according to BeBook we should return positive integer on success
 }
 
 
