@@ -50,21 +50,30 @@ JoystickLooper::MessageReceived(BMessage *message)
 					int32 i = fJoystick->fAxesList->IndexOf(item);
 					if (i < 0)
 						break;
-					fJoystick->fAxesValues[i] = (int16) (value * 32767);
-					//printf("i: %d, v: %d\n", i, fJoystick->fAxesValues[i]);
+					fJoystick->fAxesValues[i] = (int16) (value * 32768.0f
+							- 0.5f);
+
+					if (i == 0)
+						fJoystick->horizontal = fJoystick->fAxesValues[0];
+					if (i == 1)
+						fJoystick->vertical = fJoystick->fAxesValues[1];
 					break;
 				}
 
 			case HID_USAGE_PAGE_BUTTON:
 				{
 					int32 i = fJoystick->fButtonsList->IndexOf(item);
-					//printf("i: %d, v: %g\n", i, value);
 					if (i < 0)
 						break;
-					if (value != 0.0f)
+					if (value > 0.5f)
 						fJoystick->fButtons |= ((uint32) 1 << i);
 					else
 						fJoystick->fButtons &= ~((uint32) 1 << i);
+
+					if (i == 0)
+						fJoystick->button1 = fJoystick->fButtons & 1;
+					if (i == 1)
+						fJoystick->button2 = fJoystick->fButtons & 2;
 					break;
 				}
 		}
@@ -346,6 +355,8 @@ BJoystick::ButtonValues(int32 for_stick)
 status_t
 BJoystick::Update(void)
 {
+	timestamp = real_time_clock_usecs();
+
 	return B_OK;
 }
 

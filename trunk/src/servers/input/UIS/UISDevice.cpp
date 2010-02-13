@@ -19,7 +19,8 @@ UISDevice::UISDevice(uis_device_id id, UISManager *manager, const char *path)
 	fUISManager(manager),
 	fPath(strdup(path)),
 	fDevice(-1),
-	fUsage(0)
+	fUsagePage(0),
+	fUsageId(0)
 {
 	fReports[UIS_REPORT_TYPE_INPUT] = NULL;
 	fReports[UIS_REPORT_TYPE_OUTPUT] = NULL;
@@ -39,7 +40,8 @@ UISDevice::UISDevice(uis_device_id id, UISManager *manager, const char *path)
 	if (status != B_OK)
 		return;
 
-	fUsage = info.usage;
+	fUsagePage = info.usage.page;
+	fUsageId = info.usage.id;
 	fName.SetTo(fDevice, info.name);
 	//TRACE("usage: %08x, input report count: %d, name: %d\n", fUsage,
 	//	info.reportCount, info.name);

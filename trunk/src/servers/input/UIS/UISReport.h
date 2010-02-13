@@ -4,7 +4,7 @@
 #include <Message.h>
 
 
-union _uis_report_data;
+struct _uis_report_data;
 typedef _uis_report_data uis_report_data;
 
 class UISReportItem;
@@ -23,6 +23,8 @@ public:
 	void			SetReport(uis_report_data *data);
 	int32			CountItems() { return fItemsCount; };
 	UISReportItem *	ItemAt(int32 index);
+
+	status_t		SendReport(BMessage *message);
 
 private:
 	static status_t	_ReadingThreadEntry(void *arg);

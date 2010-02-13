@@ -20,6 +20,43 @@ using std::nothrow;
 static const char kMonitoredPath[] = "/dev/input/hid";
 
 
+bool
+convert_from_uis_type(uint8 *type)
+{
+	switch (*type) {
+		case UIS_TYPE_INPUT:
+			*type = UIS_REPORT_TYPE_INPUT;
+			break;
+		case UIS_TYPE_OUTPUT:
+			*type = UIS_REPORT_TYPE_OUTPUT;
+			break;
+		case UIS_TYPE_FEATURE:
+			*type = UIS_REPORT_TYPE_FEATURE;
+			break;
+		default:
+			return false;
+	}
+
+	return true;
+}
+
+
+uint8
+convert_to_uis_type(uint8 type)
+{
+	switch (type) {
+		case UIS_REPORT_TYPE_INPUT:
+			return UIS_TYPE_INPUT;
+		case UIS_REPORT_TYPE_OUTPUT:
+			return UIS_TYPE_OUTPUT;
+		case UIS_REPORT_TYPE_FEATURE:
+			return UIS_TYPE_FEATURE;
+	}
+
+	return 0;
+}
+
+
 UISManager::UISManager()
 	: BLooper("uis manager"),
 	fIsRunning(false),
@@ -140,13 +177,15 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 					break;
 
 				BAutolock lock(fDeviceMapLock);
-				if (lock.IsLocked()) {
-					DeviceMap::iterator found = fDeviceMap.upper_bound(id);
-					if (found == fDeviceMap.end())
-						return B_BAD_VALUE;
-					return reply->AddInt32("next", found->first);
+				if (!lock.IsLocked())
+					break;
+
+				DeviceMap::iterator found = fDeviceMap.upper_bound(id);
+				if (found == fDeviceMap.end()) {
+					status = B_BAD_VALUE;
+					break;
 				}
-				break;
+				return reply->AddInt32("next", found->first);
 			}
 
 		case B_UIS_FIND_DEVICE:
@@ -157,23 +196,17 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 					break;
 
 				BAutolock lock(fDeviceMapLock);
-				if (lock.IsLocked()) {
-					for (DeviceMap::iterator it = fDeviceMap.begin();
-							it != fDeviceMap.end(); it++) {
-						UISDevice *device = it->second;
-						if ((name != NULL && device->HasName(name))
-								|| (path != NULL && device->HasPath(path)))
-							return reply->AddInt32("device", it->first);
-					}
+				if (!lock.IsLocked())
+					break;
+
+				for (DeviceMap::iterator it = fDeviceMap.begin();
+						it != fDeviceMap.end(); it++) {
+					UISDevice *device = it->second;
+					if ((name != NULL && device->HasName(name))
+							|| (path != NULL && device->HasPath(path)))
+						return reply->AddInt32("device", it->first);
 				}
 				break;
-			}
-
-		case B_UIS_COUNT_DEVICES:
-			{
-				BAutolock lock(fDeviceMapLock);
-				if (lock.IsLocked())
-					return reply->AddInt32("devices", fDeviceMap.size());
 			}
 
 		case B_UIS_GET_DEVICE:
@@ -183,72 +216,130 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 					break;
 
 				BAutolock lock(fDeviceMapLock);
-				if (lock.IsLocked()) {
-					UISDevice *device = _Device(id);
-					if (device == NULL)
-						break;
+				if (!lock.IsLocked())
+					break;
 
-					status = reply->AddString("name", device->Name());
-					if (status != B_OK)
-						break;
-					status = reply->AddString("path", device->Path());
-					if (status != B_OK)
-						break;
-					status = reply->AddInt32("usage", device->Usage());
-					if (status != B_OK)
-						break;
-					return reply->AddInt32("input reports",
-						device->CountReports(0));
-				}
-				break;
+				UISDevice *device = _Device(id);
+				if (device == NULL)
+					break;
+
+				status = reply->AddString("name", device->Name());
+				if (status != B_OK)
+					break;
+				status = reply->AddString("path", device->Path());
+				if (status != B_OK)
+					break;
+				status = reply->AddInt16("page", device->UsagePage());
+				if (status != B_OK)
+					break;
+				status = reply->AddInt16("id", device->UsageId());
+				if (status != B_OK)
+					break;
+				status = reply->AddInt32("input reports",
+					device->CountReports(UIS_REPORT_TYPE_INPUT));
+				if (status != B_OK)
+					break;
+				status = reply->AddInt32("output reports",
+					device->CountReports(UIS_REPORT_TYPE_OUTPUT));
+				if (status != B_OK)
+					break;
+				return reply->AddInt32("feature reports",
+					device->CountReports(UIS_REPORT_TYPE_FEATURE));
 			}
 
 		case B_UIS_GET_REPORT:
 			{
 				uis_device_id id;
 				int32 index;
+				uint8 type;
 				if (message->FindInt32("device", &id) != B_OK
-						|| message->FindInt32("report", &index) != B_OK)
+						|| message->FindInt32("report", &index) != B_OK
+						|| message->FindInt8("type", (int8 *) &type) != B_OK)
 					break;
 
 				BAutolock lock(fDeviceMapLock);
-				if (lock.IsLocked()) {
-					UISDevice *device = _Device(id);
-					if (device == NULL)
-						break;
+				if (!lock.IsLocked())
+					break;
 
-					UISReport *report = device->ReportAt(0, index);
-					if (report != NULL) {
-						return reply->AddInt32("items", report->CountItems());
+				UISDevice *device = _Device(id);
+				if (device == NULL)
+					break;
+
+				for (uint8 i = 0; i < UIS_REPORT_TYPES; i++) {
+					if ((type & 1 << i) != 0) {
+						if (index < device->CountReports(i)) {
+							type = i;
+							break;
+						}
+						index -= device->CountReports(i);
 					}
 				}
+
+				UISReport *report = device->ReportAt(type, index);
+				if (report == NULL)
+					break;
+				status = reply->AddInt32("items", report->CountItems());
+				if (status != B_OK)
+					break;
+				return reply->AddInt8("type", (int8) convert_to_uis_type(type));
+			}
+
+		case B_UIS_SEND_REPORT:
+			{
+				uis_device_id id;
+				int32 index;
+				uint8 type;
+				if (message->FindInt32("device", &id) != B_OK
+						|| message->FindInt32("report", &index) != B_OK
+						|| message->FindInt8("type", (int8 *) &type) != B_OK)
+					break;
+				if (!convert_from_uis_type(&type))
+					break;
+
+				BAutolock lock(fDeviceMapLock);
+				if (!lock.IsLocked())
+					break;
+
+				UISDevice *device = _Device(id);
+				if (device == NULL)
+					break;
+				UISReport *report = device->ReportAt(type, index);
+				if (report != NULL)
+					return report->SendReport(message);
+				break;
 			}
 
 		case B_UIS_GET_ITEM:
 			{
 				uis_device_id id;
-				int32 report, index;
+				int32 reportIndex, itemIndex;
+				uint8 type;
 				if (message->FindInt32("device", &id) != B_OK
-						|| message->FindInt32("report", &report) != B_OK
-						|| message->FindInt32("item", &index) != B_OK)
+						|| message->FindInt32("report", &reportIndex) != B_OK
+						|| message->FindInt8("type", (int8 *) &type) != B_OK
+						|| message->FindInt32("item", &itemIndex) != B_OK)
+					break;
+				if (!convert_from_uis_type(&type))
 					break;
 
 				BAutolock lock(fDeviceMapLock);
-				if (lock.IsLocked()) {
-					UISDevice *device = _Device(id);
-					if (device == NULL)
-						break;
+				if (!lock.IsLocked())
+					break;
 
-					UISReport *report = device->ReportAt(0, index);
+				UISDevice *device = _Device(id);
+				if (device == NULL)
+					break;
+				UISReport *report = device->ReportAt(type, reportIndex);
+				if (report == NULL)
+					break;
+				UISReportItem *item = report->ItemAt(itemIndex);
+				if (item == NULL)
+					break;
 
-					UISReportItem *item = report->ItemAt(index);
-					if (item != NULL) {
-						status = reply->AddInt16("page", item->UsagePage());
-						if (status != B_OK)
-							break;
-						return reply->AddInt16("id", item->UsageId());
-					}
-				}
+				status = reply->AddInt16("page", item->UsagePage());
+				if (status != B_OK)
+					break;
+				return reply->AddInt16("id", item->UsageId());
 			}
 
 		case B_UIS_FIND_ITEM:
@@ -260,47 +351,58 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 					break;
 
 				BAutolock lock(fDeviceMapLock);
-				if (lock.IsLocked()) {
-					uint16 usagePage = usage >> 16;
-					uint16 usageId = usage & 0xffff;
+				if (!lock.IsLocked())
+					break;
 
-					UISDevice *device = _Device(id);
-					if (device == NULL)
-						break;
+				uint16 usagePage = usage >> 16;
+				uint16 usageId = usage & 0xffff;
 
-					for (int32 ir = 0; ir < device->CountReports(0); ir++) {
-						UISReport *report = device->ReportAt(0, ir);
-						for (int32 ii = 0; ii < report->CountItems(); ii++) {
-							UISReportItem *item = report->ItemAt(ii);
-							if (item->UsagePage() == usagePage
-									&& item->UsageId() == usageId) {
-								//TRACE("found item\n");
-								status = reply->AddInt32("report", ir);
-								if (status != B_OK)
-									break;
-								status = reply->AddInt32("item", ii);
-								if (status != B_OK)
-									break;
-								status = reply->AddInt16("page",
-									item->UsagePage());
-								if (status != B_OK)
-									break;
-								return reply->AddInt16("id", item->UsageId());
-							}
+				UISDevice *device = _Device(id);
+				if (device == NULL)
+					break;
+
+				for (int32 ir = 0;
+						ir < device->CountReports(UIS_REPORT_TYPE_INPUT);
+						ir++) {
+					UISReport *report = device->ReportAt(UIS_REPORT_TYPE_INPUT,
+						ir);
+					for (int32 ii = 0; ii < report->CountItems(); ii++) {
+						UISReportItem *item = report->ItemAt(ii);
+						if (item->UsagePage() == usagePage
+								&& item->UsageId() == usageId) {
+							status = reply->AddInt32("report", ir);
+							if (status != B_OK)
+								break;
+							status = reply->AddInt32("item", ii);
+							if (status != B_OK)
+								break;
+							status = reply->AddInt16("page", item->UsagePage());
+							if (status != B_OK)
+								break;
+							status = reply->AddInt16("id", item->UsageId());
+							if (status != B_OK)
+								break;
+							return reply->AddBool("relative",
+								item->IsRelative());
 						}
 					}
 				}
+				break;
 			}
 
 		case B_UIS_ITEM_SET_TARGET:
 			{
 				uis_device_id id;
 				int32 reportIndex, itemIndex;
+				uint8 type;
 				void *target;
 				if (message->FindInt32("device", &id) != B_OK
 						|| message->FindInt32("report", &reportIndex) != B_OK
 						|| message->FindInt32("item", &itemIndex) != B_OK
+						|| message->FindInt8("type", (int8 *) &type) != B_OK
 						|| message->FindPointer("target", &target) != B_OK)
+					break;
+				if (!convert_from_uis_type(&type))
 					break;
 
 				team_id team;
@@ -317,16 +419,21 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 					cookie = NULL;
 
 				BAutolock lock(fDeviceMapLock);
-				if (lock.IsLocked()) {
-					UISDevice *device = _Device(id);
-					if (device == NULL)
-						break;
+				if (!lock.IsLocked())
+					break;
 
-					UISReport *report = device->ReportAt(0, reportIndex);
-					UISReportItem *item = report->ItemAt(itemIndex);
-					item->SetTarget(team, port, token, cookie, &target);
-					return reply->AddPointer("target", target);
-				}
+				UISDevice *device = _Device(id);
+				if (device == NULL)
+					break;
+				UISReport *report = device->ReportAt(type, reportIndex);
+				if (report == NULL)
+					break;
+				UISReportItem *item = report->ItemAt(itemIndex);
+				if (item == NULL)
+					break;
+
+				item->SetTarget(team, port, token, cookie, &target);
+				return reply->AddPointer("target", target);
 			}
 	}
 

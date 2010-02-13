@@ -22,7 +22,8 @@ public:
 
 	const char *	Path() { return fPath; };
 	const char *	Name() { return fName.String(); };
-	uint32			Usage() { return fUsage; };
+	uint16			UsagePage() { return fUsagePage; };
+	uint16			UsageId() { return fUsageId; };
 	int32			CountReports(uint8 type);
 	UISReport *		ReportAt(uint8 type, int32 index);
 
@@ -34,7 +35,8 @@ private:
 	char *			fPath;
 	int				fDevice;
 	UISString		fName;
-	uint32			fUsage;
+	uint16			fUsagePage;
+	uint16			fUsageId;
 	UISReport **	fReports[UIS_REPORT_TYPES];
 	int32			fReportsCount[UIS_REPORT_TYPES];
 };

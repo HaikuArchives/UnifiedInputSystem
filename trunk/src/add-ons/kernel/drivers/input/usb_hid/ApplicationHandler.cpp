@@ -146,7 +146,7 @@ ApplicationHandler::Control(uint32 op, void *buffer, size_t length)
 		case UIS_DEVICE_INFO:
 			{
 				uis_device_info *info = (uis_device_info *) buffer;
-				info->usage = fUsage;
+				info->usage.extended = fUsage;
 				for (uint8 i = 0; i < UIS_REPORT_TYPES; i++)
 					info->reportCount[i] = fReportHandlerCount[i];
 				info->name = fDevice->Name();
@@ -170,6 +170,7 @@ ApplicationHandler::Control(uint32 op, void *buffer, size_t length)
 
 		case UIS_ITEM_INFO:
 		case UIS_READ:
+		case UIS_SEND:
 		case UIS_STOP:
 			{
 				ReportHandler *handler = *((ReportHandler **) buffer);
