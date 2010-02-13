@@ -53,8 +53,8 @@ ReportHandler::Control(uint32 op, void *buffer, size_t length)
 				if (item == NULL)
 					return B_ERROR; // FIXME
 				info->out.item = item;
-				info->out.usagePage = item->UsagePage();
-				info->out.usageId = item->UsageID();
+				info->out.usage.page = item->UsagePage();
+				info->out.usage.id = item->UsageID();
 				info->out.isRelative = item->Relative();
 				return B_OK;
 			}
@@ -75,7 +75,23 @@ ReportHandler::Control(uint32 op, void *buffer, size_t length)
 				return _RingBufferRead((uint8 *) buffer
 						+ sizeof(uis_report_data),
 					sizeof(uis_item_data)
-						* ((uis_report_data *) buffer)->out.items);
+						* ((uis_report_data *) buffer)->items);
+			}
+
+		case UIS_SEND:
+			{
+				uis_report_data *data = (uis_report_data *) buffer;
+				for (int32 i = 0; i < data->items; i++) {
+					HIDReportItem *item = fReport->ItemAt(data->item[i].index);
+					if (item == NULL)
+						return B_ERROR;
+					uint32 v = (uint32) data->item[i].value;
+					//TRACE("%d value = %d\n", data->item[i].index, v);
+					status_t status = item->SetData(v);
+					if (status != B_OK)
+						return status;
+				}
+				return fReport->SendReport();
 			}
 
 		case UIS_STOP:
@@ -115,7 +131,7 @@ ReportHandler::_ReadReport()
 	size_t size = sizeof(uis_report_data);
 	uis_report_data *data = (uis_report_data *) malloc(size
 			+ sizeof(uis_item_data) * fReport->CountItems());
-	data->out.items = 0;
+	data->items = 0;
 
 	HIDReportItem *item;
 	for (uint32 i = 0; i<fReport->CountItems(); i++) {
@@ -124,10 +140,10 @@ ReportHandler::_ReadReport()
 			continue;
 		if (item->Extract() == B_OK && item->Valid()
 				&& item->HasDataChanged()) {
-			data->out.item[data->out.items].index = i;
+			data->item[data->items].index = i;
 
 			if (item->Maximum() - item->Minimum() == 1) {
-				data->out.item[data->out.items++].value
+				data->item[data->items++].value
 					= (item->Data() == item->Maximum()) ? 1.0f : 0.0f;
 			} else {
 				float value = (float) item->Data() - (item->Minimum()
@@ -135,13 +151,13 @@ ReportHandler::_ReadReport()
 				if (value > -1.0f && value < 1.0f)
 					value = 0.0f;
 				value *= 2.0f / (item->Maximum() - item->Minimum());
-				data->out.item[data->out.items++].value = value;
+				data->item[data->items++].value = value;
 			}
 		}
 	}
 
 	fReport->DoneProcessing();
-	size += sizeof(uis_item_data) * data->out.items;
+	size += sizeof(uis_item_data) * data->items;
 
 	result = _RingBufferWrite(data, size);
 

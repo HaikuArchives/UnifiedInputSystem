@@ -21,11 +21,11 @@ UISReportItem::UISReportItem(int fd, UISReport *report, int32 index)
 	if (ioctl(fd, UIS_ITEM_INFO, &itemDesc) != B_OK)
 		return;
 	fItem = itemDesc.out.item;
-	fUsagePage = itemDesc.out.usagePage;
-	fUsageId = itemDesc.out.usageId;
+	fUsagePage = itemDesc.out.usage.page;
+	fUsageId = itemDesc.out.usage.id;
 	fIsRelative = itemDesc.out.isRelative;
-	TRACE("create item usage page: %04x id: %04x, relative: %s\n",
-		fUsagePage, fUsageId, fIsRelative?"yes":"no");
+	//TRACE("create item usage page: %04x id: %04x, relative: %s\n",
+	//	fUsagePage, fUsageId, fIsRelative?"yes":"no");
 }
 
 

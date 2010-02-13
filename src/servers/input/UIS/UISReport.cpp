@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <string.h>
 #include <new>
 
 using std::nothrow;
@@ -38,8 +39,8 @@ UISReport::UISReport(int fd, UISDevice *device, uint8 type, uint8 index)
 		return;
 	fReport = reportDesc.out.report;
 	fId = reportDesc.out.id;
-	TRACE("create report type: %d, id: %d, items: %d\n", fType, fId,
-		reportDesc.out.itemCount);
+	//TRACE("create report type: %d, id: %d, items: %d\n", fType, fId,
+	//	reportDesc.out.itemCount);
 
 	fItems = new (std::nothrow) UISReportItem *[reportDesc.out.itemCount];
 	if (fItems == NULL)
@@ -101,12 +102,12 @@ void
 UISReport::SetReport(uis_report_data *data)
 {
 	//TRACE("has items: %d\n", data->out.items);
-	for (int32 i = 0; i < data->out.items; i++) {
+	for (int32 i = 0; i < data->items; i++) {
 		//TRACE("index of item: %d\n", data->out.item[i].index);
-		UISReportItem *item = ItemAt(data->out.item[i].index);
+		UISReportItem *item = ItemAt(data->item[i].index);
 			// TODO: check numbering
 		if (item != NULL)
-			item->SetValue(data->out.item[i].value);
+			item->SetValue(data->item[i].value);
 		//TRACE("set value report %d %d %08x\n", fType, fId, i);
 	}
 }
@@ -118,6 +119,40 @@ UISReport::ItemAt(int32 index)
 	if (index >= CountItems())
 		return NULL;
 	return fItems[index];
+}
+
+
+status_t
+UISReport::SendReport(BMessage *message)
+{
+	int32 count;
+
+	status_t status = message->GetInfo("data", NULL, &count);
+	if (status != B_OK)
+		return status;
+
+	uint8 *buffer = new (std::nothrow) uint8[sizeof(uis_report_data)
+			+ sizeof(uis_report_info) * count];
+
+	uis_report_data *data = (uis_report_data *) buffer;
+	data->report = fReport;
+	data->items = count;
+
+	for (int32 i = 0; i < count; i++) {
+		const void *msgData;
+		ssize_t bytes;
+		status = message->FindData("data", B_RAW_TYPE, i, &msgData, &bytes);
+		if (status != B_OK || bytes != sizeof(uis_item_data))
+			break;
+		memcpy(&data->item[i], msgData, sizeof(uis_item_data));
+	}
+
+	if (status == B_OK)
+		status = ioctl(fDevice, UIS_SEND, buffer);
+
+	delete [] buffer;
+
+	return status;
 }
 
 
@@ -145,7 +180,7 @@ UISReport::_ReadingThread()
 
 	while (fThreadActive) {
 		uis_report_data *data = (uis_report_data *) buffer;
-		data->in.report = fReport;
+		data->report = fReport;
 		if (ioctl(fDevice, UIS_READ, data) != B_OK) {
 			if (errno == B_DEV_NOT_READY) {
 				delete [] buffer;

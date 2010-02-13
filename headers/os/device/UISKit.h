@@ -10,22 +10,33 @@ enum {
 	B_UIS_DEVICE_REMOVED,
 };
 
+enum {
+	UIS_TYPE_INPUT		= 1,
+	UIS_TYPE_OUTPUT,
+	UIS_TYPE_FEATURE	= 4,
+	UIS_TYPE_ANY		= 7,
+};
+
 class BLooper;
+class BMessage;
 
 
 class BUISItem {
 public:
 						~BUISItem();
 
+	uint8				Type() { return fType; };
+	uint16				UsagePage() { return fUsagePage; };
+	uint16				UsageId() { return fUsageId; };
+	bool				IsRelative() { return fIsRelative; };
+
 	status_t			SetTarget(BLooper *looper);
 	status_t			SetTarget(BLooper *looper, void *cookie);
 
-	uint16				UsagePage() { return fUsagePage; };
-	uint16				UsageId() { return fUsageId; };
-
 private:
 						BUISItem(uis_device_id device, int32 report, int32 item,
-							uint16 usagePage, uint16 usageId);
+							uint8 type, uint16 usagePage, uint16 usageId,
+							bool isRelative);
 						friend class BUISReport;
 						friend class BUISDevice;
 
@@ -35,8 +46,10 @@ private:
 
 	void *				fTarget;
 
+	uint8				fType;
 	uint16				fUsagePage;
 	uint16				fUsageId;
+	bool				fIsRelative;
 };
 
 
@@ -45,14 +58,22 @@ public:
 	int32				CountItems() { return fItems; };
 	BUISItem *			ItemAt(int32 index);
 
+	status_t			AddItemValue(int32 index, float value);
+	status_t			Send();
+	void				MakeEmpty();
+
 private:
 						BUISReport(uis_device_id device, int32 report,
-							int32 items);
+							int32 items, uint8 type);
 						friend class BUISDevice;
 
 	uis_device_id		fDevice;
 	int32				fReport;
 	int32				fItems;
+
+	uint8				fType;
+
+	BMessage *			fSendMessage;
 };
 
 
@@ -65,8 +86,8 @@ public:
 
 	uis_device_id		Device() { return fDevice; };
 
-	int32				CountReports() { return fInputReports; };
-	BUISReport *		ReportAt(int32 index);
+	int32				CountReports(uint8 type);
+	BUISReport *		ReportAt(uint8 type, int32 index);
 
 	BUISItem *			FindItem(uint32 usage);
 
@@ -77,8 +98,11 @@ private:
 	uis_device_id		fDevice;
 	char *				fName;
 	char *				fPath;
-	uint32				fUsage;
+	uint16				fUsagePage;
+	uint16				fUsageId;
 	int32				fInputReports;
+	int32				fOutputReports;
+	int32				fFeatureReports;
 
 	status_t			fStatus;
 };

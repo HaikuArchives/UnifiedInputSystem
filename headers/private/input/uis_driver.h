@@ -9,9 +9,10 @@ enum {
 	UIS_DEVICE_INFO = B_DEVICE_OP_CODES_END,
 	UIS_REPORT_INFO,
 	UIS_ITEM_INFO,
-	UIS_READ,
-	UIS_STOP,
 	UIS_STRING_INFO,
+	UIS_READ,
+	UIS_SEND,
+	UIS_STOP,
 };
 
 
@@ -23,10 +24,19 @@ enum {
 };
 
 
+typedef union {
+	struct {
+		uint16	id;
+		uint16	page;
+	};
+	uint32	extended;
+} uis_usage;
+
+
 typedef struct {
-	uint32	usage;
-	int32	reportCount[3];
-	uint32	name;
+	uis_usage	usage;
+	int32		reportCount[3];
+	uint32		name;
 } uis_device_info;
 
 
@@ -45,14 +55,13 @@ typedef union {
 
 typedef union {
 	struct {
-		void *	report;
-		int32	index;
+		void *		report;
+		int32		index;
 	} in;
 	struct {
-		void *	item;
-		uint16	usagePage;
-		uint16	usageId;
-		bool	isRelative;
+		void *		item;
+		uis_usage	usage;
+		bool		isRelative;
 	} out;
 } uis_item_info;
 
@@ -63,14 +72,10 @@ typedef struct {
 } uis_item_data;
 
 
-typedef union _uis_report_data {
-	struct {
-		void *			report;
-	} in;
-	struct _uis_report_data_out {
-		int32			items;
-		uis_item_data	item[0];
-	} out;
+typedef struct _uis_report_data {
+	void *			report;
+	int32			items;
+	uis_item_data	item[0];
 } uis_report_data;
 
 
