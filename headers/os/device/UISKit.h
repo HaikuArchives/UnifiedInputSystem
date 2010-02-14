@@ -30,13 +30,16 @@ public:
 	uint16				UsageId() { return fUsageId; };
 	bool				IsRelative() { return fIsRelative; };
 
+	status_t			Update();
+	float				Value() { return fValue; };
+
 	status_t			SetTarget(BLooper *looper);
 	status_t			SetTarget(BLooper *looper, void *cookie);
 
 private:
 						BUISItem(uis_device_id device, int32 report, int32 item,
 							uint8 type, uint16 usagePage, uint16 usageId,
-							bool isRelative);
+							bool isRelative, float value);
 						friend class BUISReport;
 						friend class BUISDevice;
 
@@ -50,6 +53,8 @@ private:
 	uint16				fUsagePage;
 	uint16				fUsageId;
 	bool				fIsRelative;
+
+	float				fValue;
 };
 
 
@@ -89,7 +94,7 @@ public:
 	int32				CountReports(uint8 type);
 	BUISReport *		ReportAt(uint8 type, int32 index);
 
-	BUISItem *			FindItem(uint32 usage);
+	BUISItem *			FindItem(uint16 usagePage, uint16 usageId);
 
 	const char *		Name() { return fName; };
 	const char *		Path() { return fPath; };

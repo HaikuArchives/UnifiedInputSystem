@@ -24,7 +24,7 @@ using namespace BPrivate;
 
 
 BUISItem::BUISItem(uis_device_id device, int32 report, int32 item, uint8 type,
-		uint16 usagePage, uint16 usageId, bool isRelative)
+		uint16 usagePage, uint16 usageId, bool isRelative, float value)
 	:
 	fDevice(device),
 	fReport(report),
@@ -33,7 +33,8 @@ BUISItem::BUISItem(uis_device_id device, int32 report, int32 item, uint8 type,
 	fType(type),
 	fUsagePage(usagePage),
 	fUsageId(usageId),
-	fIsRelative(isRelative)
+	fIsRelative(isRelative),
+	fValue(value)
 {
 }
 
@@ -42,6 +43,29 @@ BUISItem::~BUISItem()
 {
 	if (fTarget != NULL)
 		SetTarget(NULL);
+}
+
+
+status_t
+BUISItem::Update()
+{
+	BMessage command(IS_UIS_MESSAGE), reply;
+
+	command.AddInt32("opcode", B_UIS_ITEM_POLL_VALUE);
+	command.AddInt32("device", fDevice);
+	command.AddInt32("report", fReport);
+	command.AddInt8("type", (int8) fType);
+	command.AddInt32("item", fItem);
+
+	status_t status = _control_input_server_(&command, &reply);
+	if (status != B_OK)
+		return status;
+	float value;
+	status = reply.FindFloat("value", &value);
+	if (status != B_OK)
+		return status;
+	fValue = value;
+	return B_OK;
 }
 
 
@@ -109,13 +133,15 @@ BUISReport::ItemAt(int32 index)
 
 	uint16 page, id;
 	bool relative;
+	float value;
 	if (reply.FindInt16("page", (int16 *) &page) != B_OK
 			|| reply.FindInt16("id", (int16 *) &id) != B_OK
-			|| reply.FindBool("relative", &relative) != B_OK)
+			|| reply.FindBool("relative", &relative) != B_OK
+			|| reply.FindFloat("value", &value) != B_OK)
 		return NULL;
 
 	return new (std::nothrow) BUISItem(fDevice, fReport, index, fType, page, id,
-		relative);
+		relative, value);
 }
 
 
@@ -252,13 +278,14 @@ BUISDevice::ReportAt(uint8 type, int32 index)
 
 
 BUISItem *
-BUISDevice::FindItem(uint32 usage)
+BUISDevice::FindItem(uint16 usagePage, uint16 usageId)
 {
 	BMessage command(IS_UIS_MESSAGE), reply;
 
 	command.AddInt32("opcode", B_UIS_FIND_ITEM);
 	command.AddInt32("device", fDevice);
-	command.AddInt32("usage", (int32) usage);
+	command.AddInt16("page", (int16) usagePage);
+	command.AddInt16("id", (int16) usageId);
 
 	if (_control_input_server_(&command, &reply) != B_OK)
 		return NULL;
@@ -266,15 +293,17 @@ BUISDevice::FindItem(uint32 usage)
 	int32 report, item;
 	uint16 page, id;
 	bool relative;
+	float value;
 	if (reply.FindInt32("report", &report) != B_OK
 			|| reply.FindInt32("item", &item) != B_OK
 			|| reply.FindInt16("page", (int16 *) &page) != B_OK
 			|| reply.FindInt16("id", (int16 *) &id) != B_OK
-			|| reply.FindBool("relative", &relative) != B_OK)
+			|| reply.FindBool("relative", &relative) != B_OK
+			|| reply.FindFloat("value", &value) != B_OK)
 		return NULL;
 
 	return new (std::nothrow) BUISItem(fDevice, report, item, UIS_TYPE_INPUT,
-		page, id, relative);
+		page, id, relative, value);
 			// found item is always of type input
 }
 
