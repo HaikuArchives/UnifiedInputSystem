@@ -152,25 +152,23 @@ BJoystick::Open(const char *devName, bool enterEnhanced)
 
 	BUISItem *item;
 
-	item = fUISDevice->FindItem(HID_USAGE_PAGE_GENERIC_DESKTOP << 16
-		| HID_USAGE_ID_X);
+	item = fUISDevice->FindItem(HID_USAGE_PAGE_GENERIC_DESKTOP, HID_USAGE_ID_X);
 	if (item) {
 		fAxesList->AddItem(item);
 		item->SetTarget(fLooper);
 	}
-	item = fUISDevice->FindItem(HID_USAGE_PAGE_GENERIC_DESKTOP << 16
-		| HID_USAGE_ID_Y);
+	item = fUISDevice->FindItem(HID_USAGE_PAGE_GENERIC_DESKTOP, HID_USAGE_ID_Y);
 	if (item) {
 		fAxesList->AddItem(item);
 		item->SetTarget(fLooper);
 	}
 
-	item = fUISDevice->FindItem(HID_USAGE_PAGE_BUTTON << 16 | 1);
+	item = fUISDevice->FindItem(HID_USAGE_PAGE_BUTTON, 1);
 	if (item) {
 		fButtonsList->AddItem(item);
 		item->SetTarget(fLooper);
 	}
-	item = fUISDevice->FindItem(HID_USAGE_PAGE_BUTTON << 16 | 2);
+	item = fUISDevice->FindItem(HID_USAGE_PAGE_BUTTON, 2);
 	if (item) {
 		fButtonsList->AddItem(item);
 		item->SetTarget(fLooper);

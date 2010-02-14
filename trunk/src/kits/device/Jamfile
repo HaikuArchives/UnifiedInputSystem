@@ -2,7 +2,7 @@ SubDir HAIKU_TOP src kits device ;
 
 SetSubDirSupportedPlatformsBeOSCompatible ;
 
-UsePrivateHeaders device app input interface  ;
+UsePrivateHeaders device app input interface ;
 
 # for usb_raw.h that defines the ioctl protocol used by the USB classes
 UseHeaders [ FDirName $(HAIKU_TOP) src add-ons kernel drivers bus usb ] : true ;

@@ -35,6 +35,8 @@ public:
 	status_t	SendEvent(uis_item_target *itemTarget, UISReportItem *item);
 
 private:
+	void		_RecursiveScan(const char *directory);
+	void		_AddDevice(const char *path);
 	void		_HandleAddRemoveDevice(BMessage *message);
 	UISDevice *	_Device(uis_device_id id);
 
