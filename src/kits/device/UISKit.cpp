@@ -314,7 +314,24 @@ BUISDevice::FindItem(uint16 usagePage, uint16 usageId)
 BUISDevice *
 BUISRoster::FindByName(const char *name)
 {
-	return NULL;
+	BMessage command(IS_UIS_MESSAGE), reply;
+
+	command.AddInt32("opcode", B_UIS_FIND_DEVICE);
+	command.AddString("name", name);
+
+	if (_control_input_server_(&command, &reply) != B_OK)
+		return NULL;
+
+	uis_device_id deviceId;
+	if (reply.FindInt32("device", &deviceId) != B_OK)
+		return NULL;
+
+	BUISDevice *device = new (std::nothrow) BUISDevice(deviceId);
+	if (device != NULL && device->InitCheck() != B_OK) {
+		delete device;
+		device = NULL;
+	}
+	return device;
 }
 
 

@@ -19,36 +19,37 @@ class UISDevice;
 
 class UISManager : public BLooper {
 public:
-				UISManager();
-				~UISManager();
+					UISManager();
+					~UISManager();
 
-	status_t	Start();
-	void		Stop();
+	status_t		Start();
+	void			Stop();
 
-	void		MessageReceived(BMessage *message);
-	status_t	HandleMessage(BMessage *message, BMessage *reply);
+	void			MessageReceived(BMessage *message);
+	status_t		HandleMessage(BMessage *message, BMessage *reply);
 
-	void		RemoveDevice(uis_device_id id);
+	void			RemoveDevice(uis_device_id id);
 
-	UISTarget *	FindOrAddTarget(team_id team, port_id port, int32 token);
-	void		RemoveTarget(UISTarget *target);
-	status_t	SendEvent(uis_item_target *itemTarget, UISReportItem *item);
+	UISTarget *		FindOrAddTarget(team_id team, port_id port, int32 token);
+	void			RemoveTarget(UISTarget *target);
+	status_t		SendEvent(uis_item_target *itemTarget, UISReportItem *item);
 
 private:
-	void		_RecursiveScan(const char *directory);
-	void		_AddDevice(const char *path);
-	void		_HandleAddRemoveDevice(BMessage *message);
-	UISDevice *	_Device(uis_device_id id);
+	void			_RecursiveScan(const char *directory);
+	void			_AddDevice(const char *path);
+	void			_HandleAddDevice(BMessage *message);
+	UISDevice *		_Device(uis_device_id id);
 
-	bool		fIsRunning;
+	bool			fIsRunning;
 
 	typedef std::map<uis_device_id, UISDevice *> DeviceMap;
 	DeviceMap		fDeviceMap;
 	uis_device_id	fNextDeviceId;
+	int32			fFreeDeviceIds;
 	BLocker			fDeviceMapLock;
 
-	BList		fTargetList;
-	BLocker		fTargetListLocker;
+	BList			fTargetList;
+	BLocker			fTargetListLocker;
 };
 
 
