@@ -21,6 +21,7 @@ using std::nothrow;
 
 
 static const char kMonitoredPath[] = "/dev/input/hid";
+static const int32 kMaxDevices = 1000;
 
 
 bool
@@ -63,7 +64,8 @@ convert_to_uis_type(uint8 type)
 UISManager::UISManager()
 	: BLooper("uis manager"),
 	fIsRunning(false),
-	fNextDeviceId(1)
+	fNextDeviceId(1),
+	fFreeDeviceIds(kMaxDevices)
 {
 }
 
@@ -88,12 +90,13 @@ UISManager::Start()
 		return B_OK;
 
 	status_t status = BPathMonitor::StartWatching(kMonitoredPath,
-		B_ENTRY_CREATED | B_ENTRY_REMOVED | B_WATCH_FILES_ONLY
-			| B_WATCH_RECURSIVELY, this);
-	TRACE("start watching status: %d\n", status);
+		B_ENTRY_CREATED | B_WATCH_FILES_ONLY | B_WATCH_RECURSIVELY, this);
+				// not tracing B_ENTRY_REMOVED, since we're the one who's
+				// removing it
 	fIsRunning = (status == B_OK);
 	_RecursiveScan(kMonitoredPath);
-		// FIXME: locking problems
+
+	TRACE("uis start status: %d\n", status);
 	return status;
 }
 
@@ -105,7 +108,6 @@ UISManager::Stop()
 		BPathMonitor::StopWatching(kMonitoredPath, this);
 		fIsRunning = false;
 	}
-	// TODO: flush all devices
 }
 
 
@@ -132,20 +134,38 @@ UISManager::_AddDevice(const char *path)
 {
 	TRACE("please create %s\n", path);
 
+	BAutolock lock(fDeviceMapLock);
+	if (!lock.IsLocked() || fFreeDeviceIds == 0)
+		return;
+
+	for (DeviceMap::iterator it = fDeviceMap.begin(); it != fDeviceMap.end();
+			it++)
+		if (it->second->HasPath(path))
+			return;
+				// already have this device, thank you
+
 	UISDevice *device = new (std::nothrow) UISDevice(fNextDeviceId, this, path);
 	if (device == NULL)
 		return;
 
-	BAutolock lock(fDeviceMapLock);
-	if (!lock.IsLocked())
-		return;
-
 	try {
-		fDeviceMap.insert(std::make_pair(fNextDeviceId, device));
-	} catch (...) {
-		return;
-	}
-	fNextDeviceId++;
+		// trying to find free device id, limited to one loop pass
+		for (int32 i = 0; i < kMaxDevices; i++) {
+			std::pair<DeviceMap::iterator, bool> ret
+				= fDeviceMap.insert(std::make_pair(fNextDeviceId, device));
+			if (ret.second) {
+					// success
+				fNextDeviceId++;
+				fFreeDeviceIds--;
+				return;
+			}
+			if (++fNextDeviceId > kMaxDevices)
+				fNextDeviceId = 1;
+					// device ids ranges from 1 to kMaxDevices
+		}		
+	} catch (...) {}
+
+	delete device;
 }
 
 
@@ -154,14 +174,14 @@ UISManager::MessageReceived(BMessage *message)
 {
 	switch (message->what) {
 		case B_PATH_MONITOR:
-			_HandleAddRemoveDevice(message);
+			_HandleAddDevice(message);
 			break;
 	}
 }
 
 
 void
-UISManager::_HandleAddRemoveDevice(BMessage *message)
+UISManager::_HandleAddDevice(BMessage *message)
 {
 	int32 opcode;
 	if (message->FindInt32("opcode", &opcode) != B_OK)
@@ -175,21 +195,6 @@ UISManager::_HandleAddRemoveDevice(BMessage *message)
 
 	if (opcode == B_ENTRY_CREATED)
 		_AddDevice(path);
-	else if (opcode == B_ENTRY_REMOVED) {
-		TRACE("please delete %s\n", path);
-		BAutolock lock(fDeviceMapLock);
-		if (lock.IsLocked()) {
-			for (DeviceMap::iterator it = fDeviceMap.begin();
-					it != fDeviceMap.end(); it++) {
-				UISDevice *device = it->second;
-				if (device->HasPath(path)) {
-					fDeviceMap.erase(it);
-					delete device;
-					break;
-				}
-			}
-		}
-	}
 }
 
 
@@ -223,9 +228,8 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 
 		case B_UIS_FIND_DEVICE:
 			{
-				const char *name = NULL, *path = NULL;
-				if (message->FindString("name", &name) != B_OK
-						&& message->FindString("path", &path) != B_OK)
+				const char *name;
+				if (message->FindString("name", &name) != B_OK)
 					break;
 
 				BAutolock lock(fDeviceMapLock);
@@ -233,12 +237,9 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 					break;
 
 				for (DeviceMap::iterator it = fDeviceMap.begin();
-						it != fDeviceMap.end(); it++) {
-					UISDevice *device = it->second;
-					if ((name != NULL && device->HasName(name))
-							|| (path != NULL && device->HasPath(path)))
+						it != fDeviceMap.end(); it++)
+					if (name != NULL && it->second->HasName(name))
 						return reply->AddInt32("device", it->first);
-				}
 				break;
 			}
 
@@ -519,6 +520,7 @@ UISManager::RemoveDevice(uis_device_id id)
 		if (found != fDeviceMap.end()) {
 			delete found->second;
 			fDeviceMap.erase(found);
+			fFreeDeviceIds++;
 		}
 	}
 }
