@@ -28,7 +28,7 @@
 
 #include <shared_cursor_area.h>
 
-#include "UIS.h"
+#include "UISManager.h"
 #include "AddOnManager.h"
 #include "KeyboardSettings.h"
 #include "MouseSettings.h"

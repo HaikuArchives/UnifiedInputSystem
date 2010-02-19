@@ -16,6 +16,8 @@ public:
 						const char *path);
 					~UISDevice();
 
+	status_t		InitCheck() { return fStatus; };
+
 	UISManager *	Manager() { return fUISManager; };
 	bool			HasPath(const char *path);
 	bool			HasName(const char *name);
@@ -30,6 +32,7 @@ public:
 	void			Remove();
 
 private:
+	status_t		fStatus;
 	uis_device_id	fDeviceId;
 	UISManager *	fUISManager;
 	char *			fPath;

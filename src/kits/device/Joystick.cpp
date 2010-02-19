@@ -190,12 +190,9 @@ BJoystick::Close(void)
 	if (fUISDevice == NULL)
 		return;
 
-	while (fAxesList->CountItems() > 0)
-		delete (BUISItem *) fAxesList->RemoveItem(0l);
-	while (fHatsList->CountItems() > 0)
-		delete (BUISItem *) fHatsList->RemoveItem(0l);
-	while (fButtonsList->CountItems() > 0)
-		delete (BUISItem *) fButtonsList->RemoveItem(0l);
+	fAxesList->MakeEmpty();
+	fHatsList->MakeEmpty();
+	fButtonsList->MakeEmpty();
 
 	free(fAxesValues);
 	fAxesValues = NULL;

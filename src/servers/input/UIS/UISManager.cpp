@@ -24,41 +24,8 @@ static const char kMonitoredPath[] = "/dev/input/hid";
 static const int32 kMaxDevices = 1000;
 
 
-bool
-convert_from_uis_type(uint8 *type)
-{
-	switch (*type) {
-		case UIS_TYPE_INPUT:
-			*type = UIS_REPORT_TYPE_INPUT;
-			break;
-		case UIS_TYPE_OUTPUT:
-			*type = UIS_REPORT_TYPE_OUTPUT;
-			break;
-		case UIS_TYPE_FEATURE:
-			*type = UIS_REPORT_TYPE_FEATURE;
-			break;
-		default:
-			return false;
-	}
-
-	return true;
-}
-
-
-uint8
-convert_to_uis_type(uint8 type)
-{
-	switch (type) {
-		case UIS_REPORT_TYPE_INPUT:
-			return UIS_TYPE_INPUT;
-		case UIS_REPORT_TYPE_OUTPUT:
-			return UIS_TYPE_OUTPUT;
-		case UIS_REPORT_TYPE_FEATURE:
-			return UIS_TYPE_FEATURE;
-	}
-
-	return 0;
-}
+//class UISNotifyTarget {
+//};
 
 
 UISManager::UISManager()
@@ -147,6 +114,10 @@ UISManager::_AddDevice(const char *path)
 	UISDevice *device = new (std::nothrow) UISDevice(fNextDeviceId, this, path);
 	if (device == NULL)
 		return;
+	if (device->InitCheck() != B_OK) {
+		delete device;
+		return;
+	}
 
 	try {
 		// trying to find free device id, limited to one loop pass
@@ -298,24 +269,10 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 				UISDevice *device = _Device(id);
 				if (device == NULL)
 					break;
-
-				for (uint8 i = 0; i < UIS_REPORT_TYPES; i++) {
-					if ((type & 1 << i) != 0) {
-						if (index < device->CountReports(i)) {
-							type = i;
-							break;
-						}
-						index -= device->CountReports(i);
-					}
-				}
-
 				UISReport *report = device->ReportAt(type, index);
 				if (report == NULL)
 					break;
-				status = reply->AddInt32("items", report->CountItems());
-				if (status != B_OK)
-					break;
-				return reply->AddInt8("type", (int8) convert_to_uis_type(type));
+				return reply->AddInt32("items", report->CountItems());
 			}
 
 		case B_UIS_SEND_REPORT:
@@ -326,8 +283,6 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 				if (message->FindInt32("device", &id) != B_OK
 						|| message->FindInt32("report", &index) != B_OK
 						|| message->FindInt8("type", (int8 *) &type) != B_OK)
-					break;
-				if (!convert_from_uis_type(&type))
 					break;
 
 				BAutolock lock(fDeviceMapLock);
@@ -346,14 +301,12 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 		case B_UIS_GET_ITEM:
 			{
 				uis_device_id id;
-				int32 reportIndex, itemIndex;
 				uint8 type;
+				int32 reportIndex, itemIndex;
 				if (message->FindInt32("device", &id) != B_OK
-						|| message->FindInt32("report", &reportIndex) != B_OK
 						|| message->FindInt8("type", (int8 *) &type) != B_OK
+						|| message->FindInt32("report", &reportIndex) != B_OK
 						|| message->FindInt32("item", &itemIndex) != B_OK)
-					break;
-				if (!convert_from_uis_type(&type))
 					break;
 
 				BAutolock lock(fDeviceMapLock);
@@ -376,17 +329,16 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 				status = reply->AddInt16("id", item->UsageId());
 				if (status != B_OK)
 					break;
-				status = reply->AddBool("relative", item->IsRelative());
-				if (status != B_OK)
-					break;
-				return reply->AddFloat("value", item->Value());
+				return reply->AddBool("relative", item->IsRelative());
 			}
 
 		case B_UIS_FIND_ITEM:
 			{
 				uis_device_id id;
+				uint8 type;
 				uint16 usagePage, usageId;
 				if (message->FindInt32("device", &id) != B_OK
+					|| message->FindInt8("type", (int8 *) &type) != B_OK
 					|| message->FindInt16("page", (int16 *) &usagePage) != B_OK
 					|| message->FindInt16("id", (int16 *) &usageId) != B_OK)
 					break;
@@ -399,11 +351,8 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 				if (device == NULL)
 					break;
 
-				for (int32 ir = 0;
-						ir < device->CountReports(UIS_REPORT_TYPE_INPUT);
-						ir++) {
-					UISReport *report = device->ReportAt(UIS_REPORT_TYPE_INPUT,
-						ir);
+				for (int32 ir = 0; ir < device->CountReports(type); ir++) {
+					UISReport *report = device->ReportAt(type, ir);
 					for (int32 ii = 0; ii < report->CountItems(); ii++) {
 						UISReportItem *item = report->ItemAt(ii);
 						if (item->UsagePage() == usagePage
@@ -411,20 +360,7 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 							status = reply->AddInt32("report", ir);
 							if (status != B_OK)
 								break;
-							status = reply->AddInt32("item", ii);
-							if (status != B_OK)
-								break;
-							status = reply->AddInt16("page", item->UsagePage());
-							if (status != B_OK)
-								break;
-							status = reply->AddInt16("id", item->UsageId());
-							if (status != B_OK)
-								break;
-							status = reply->AddBool("relative",
-								item->IsRelative());
-							if (status != B_OK)
-								break;
-							return reply->AddFloat("value", item->Value());
+							return reply->AddInt32("item", ii);
 						}
 					}
 				}
@@ -434,14 +370,12 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 		case B_UIS_ITEM_POLL_VALUE:
 			{
 				uis_device_id id;
-				int32 reportIndex, itemIndex;
 				uint8 type;
+				int32 reportIndex, itemIndex;
 				if (message->FindInt32("device", &id) != B_OK
-						|| message->FindInt32("report", &reportIndex) != B_OK
 						|| message->FindInt8("type", (int8 *) &type) != B_OK
+						|| message->FindInt32("report", &reportIndex) != B_OK
 						|| message->FindInt32("item", &itemIndex) != B_OK)
-					break;
-				if (!convert_from_uis_type(&type))
 					break;
 
 				BAutolock lock(fDeviceMapLock);
@@ -463,16 +397,14 @@ UISManager::HandleMessage(BMessage *message, BMessage *reply)
 		case B_UIS_ITEM_SET_TARGET:
 			{
 				uis_device_id id;
-				int32 reportIndex, itemIndex;
 				uint8 type;
+				int32 reportIndex, itemIndex;
 				void *target;
 				if (message->FindInt32("device", &id) != B_OK
+						|| message->FindInt8("type", (int8 *) &type) != B_OK
 						|| message->FindInt32("report", &reportIndex) != B_OK
 						|| message->FindInt32("item", &itemIndex) != B_OK
-						|| message->FindInt8("type", (int8 *) &type) != B_OK
 						|| message->FindPointer("target", &target) != B_OK)
-					break;
-				if (!convert_from_uis_type(&type))
 					break;
 
 				team_id team;

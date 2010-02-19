@@ -16,15 +16,15 @@ public:
 						uint8 index);
 					~UISReport();
 
-	status_t		InitCheck() { return fStatus; };
-	UISDevice *		Device() { return fUISDevice; };
-	void *			Report() { return fReport; };
+	status_t		InitCheck() const { return fStatus; };
+	UISDevice *		Device() const { return fUISDevice; };
+	void *			Report() const { return fReport; };
 
 	void			SetReport(uis_report_data *data);
-	int32			CountItems() { return fItemsCount; };
-	UISReportItem *	ItemAt(int32 index);
+	int32			CountItems() const { return fItemsCount; };
+	UISReportItem *	ItemAt(int32 index) const;
 
-	status_t		SendReport(BMessage *message);
+	status_t		SendReport(BMessage *message) const;
 
 private:
 	static status_t	_ReadingThreadEntry(void *arg);
