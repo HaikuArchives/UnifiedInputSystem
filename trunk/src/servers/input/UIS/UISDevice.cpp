@@ -15,6 +15,7 @@ using std::nothrow;
 
 UISDevice::UISDevice(uis_device_id id, UISManager *manager, const char *path)
 	:
+	fStatus(B_NO_INIT),
 	fDeviceId(id),
 	fUISManager(manager),
 	fPath(strdup(path)),
@@ -36,8 +37,8 @@ UISDevice::UISDevice(uis_device_id id, UISManager *manager, const char *path)
 		return;
 
 	uis_device_info info;
-	status_t status = ioctl(fDevice, UIS_DEVICE_INFO, &info);
-	if (status != B_OK)
+	fStatus = ioctl(fDevice, UIS_DEVICE_INFO, &info);
+	if (fStatus != B_OK)
 		return;
 
 	fUsagePage = info.usage.page;
@@ -50,6 +51,7 @@ UISDevice::UISDevice(uis_device_id id, UISManager *manager, const char *path)
 		fReports[type] = new (std::nothrow) UISReport *[info.reportCount[type]];
 		if (fReports[type] == NULL)
 			return;
+
 		for (int32 i = 0; i < info.reportCount[type]; i++) {
 			UISReport *report = new (std::nothrow) UISReport(fDevice, this,
 				type, i);
@@ -104,7 +106,7 @@ UISDevice::HasName(const char *name)
 int32
 UISDevice::CountReports(uint8 type)
 {
-	return (type < 3) ? fReportsCount[type] : 0;
+	return (type < UIS_REPORT_TYPES) ? fReportsCount[type] : 0;
 }
 
 

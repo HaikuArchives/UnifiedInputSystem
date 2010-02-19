@@ -114,7 +114,7 @@ UISReport::SetReport(uis_report_data *data)
 
 
 UISReportItem *
-UISReport::ItemAt(int32 index)
+UISReport::ItemAt(int32 index) const
 {
 	if (index >= CountItems())
 		return NULL;
@@ -123,7 +123,7 @@ UISReport::ItemAt(int32 index)
 
 
 status_t
-UISReport::SendReport(BMessage *message)
+UISReport::SendReport(BMessage *message) const
 {
 	int32 count;
 
@@ -159,8 +159,7 @@ UISReport::SendReport(BMessage *message)
 status_t
 UISReport::_ReadingThreadEntry(void *arg)
 {
-	UISReport *report = (UISReport *) arg;
-	report->_ReadingThread();
+	((UISReport *) arg)->_ReadingThread();
 	return B_OK;
 }
 

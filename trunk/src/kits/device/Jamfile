@@ -20,5 +20,5 @@ SharedLibrary libdevice.so :
 	USBInterface.cpp
 	USBRoster.cpp
 	UISKit.cpp
-	: be $(TARGET_LIBSUPC++)
+	: be $(TARGET_LIBSUPC++) $(TARGET_LIBSTDC++)
 ;

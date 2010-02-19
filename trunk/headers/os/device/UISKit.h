@@ -1,6 +1,8 @@
 #ifndef _UISKIT_H
 #define _UISKIT_H
 
+#include <map>
+
 #include <SupportDefs.h>
 
 typedef int32 uis_device_id;
@@ -11,106 +13,18 @@ enum {
 };
 
 enum {
-	UIS_TYPE_INPUT		= 1,
+	UIS_TYPE_INPUT,
 	UIS_TYPE_OUTPUT,
-	UIS_TYPE_FEATURE	= 4,
-	UIS_TYPE_ANY		= 7,
+	UIS_TYPE_FEATURE,
+	UIS_TYPES,
 };
 
 class BLooper;
 class BMessage;
 
-
-class BUISItem {
-public:
-						~BUISItem();
-
-	uint8				Type() { return fType; };
-	uint16				UsagePage() { return fUsagePage; };
-	uint16				UsageId() { return fUsageId; };
-	bool				IsRelative() { return fIsRelative; };
-
-	status_t			Update();
-	float				Value() { return fValue; };
-
-	status_t			SetTarget(BLooper *looper);
-	status_t			SetTarget(BLooper *looper, void *cookie);
-
-private:
-						BUISItem(uis_device_id device, int32 report, int32 item,
-							uint8 type, uint16 usagePage, uint16 usageId,
-							bool isRelative, float value);
-						friend class BUISReport;
-						friend class BUISDevice;
-
-	uis_device_id		fDevice;
-	int32				fReport;
-	int32				fItem;
-
-	void *				fTarget;
-
-	uint8				fType;
-	uint16				fUsagePage;
-	uint16				fUsageId;
-	bool				fIsRelative;
-
-	float				fValue;
-};
-
-
-class BUISReport {
-public:
-	int32				CountItems() { return fItems; };
-	BUISItem *			ItemAt(int32 index);
-
-	status_t			AddItemValue(int32 index, float value);
-	status_t			Send();
-	void				MakeEmpty();
-
-private:
-						BUISReport(uis_device_id device, int32 report,
-							int32 items, uint8 type);
-						friend class BUISDevice;
-
-	uis_device_id		fDevice;
-	int32				fReport;
-	int32				fItems;
-
-	uint8				fType;
-
-	BMessage *			fSendMessage;
-};
-
-
-class BUISDevice {
-public:
-						BUISDevice(uis_device_id device);
-						~BUISDevice();
-
-	status_t			InitCheck() { return fStatus; };
-
-	uis_device_id		Device() { return fDevice; };
-
-	int32				CountReports(uint8 type);
-	BUISReport *		ReportAt(uint8 type, int32 index);
-
-	BUISItem *			FindItem(uint16 usagePage, uint16 usageId);
-
-	const char *		Name() { return fName; };
-	const char *		Path() { return fPath; };
-
-private:
-	uis_device_id		fDevice;
-	char *				fName;
-	char *				fPath;
-	uint16				fUsagePage;
-	uint16				fUsageId;
-	int32				fInputReports;
-	int32				fOutputReports;
-	int32				fFeatureReports;
-
-	status_t			fStatus;
-};
+class BUISDevice;
+class BUISReport;
+class BUISItem;
 
 
 class BUISRoster {
@@ -133,6 +47,103 @@ private:
 	uis_device_id		fCookie;
 	void *				fTarget;
 
+};
+
+
+class BUISDevice {
+public:
+						BUISDevice(uis_device_id device);
+						~BUISDevice();
+
+	status_t			InitCheck() const { return fStatus; };
+
+	uis_device_id		Device() const { return fDevice; };
+
+	int32				CountReports(uint8 type) const;
+	BUISReport *		ReportAt(uint8 type, int32 index);
+
+	BUISItem *			FindItem(uint16 usagePage, uint16 usageId,
+							uint8 type = UIS_TYPE_INPUT);
+
+	const char *		Name() const { return fName; };
+	const char *		Path() const { return fPath; };
+	uint16				UsagePage() const { return fUsagePage; };
+	uint16				UsageId() const { return fUsageId; };
+
+private:
+	uis_device_id		fDevice;
+	char *				fName;
+	char *				fPath;
+	uint16				fUsagePage;
+	uint16				fUsageId;
+
+	int32				fReports[UIS_TYPES];
+	typedef std::map<uint8, BUISReport*> ReportMap;
+	ReportMap			fReportMap[UIS_TYPES];
+
+	status_t			fStatus;
+};
+
+
+class BUISReport {
+public:
+	BUISDevice*			Device() const { return fDevice; };
+	uint8				Type() const { return fType; };
+	int32				Index() const { return fIndex; };
+
+	int32				CountItems() const { return fItems; };
+	BUISItem *			ItemAt(int32 index);
+
+	status_t			AddItemValue(int32 index, float value);
+	status_t			Send();
+	void				MakeEmpty();
+
+private:
+						BUISReport(BUISDevice* device, uint8 type, int32 index,
+							int32 items);
+						~BUISReport();
+						friend class BUISDevice;
+
+	BUISDevice*			fDevice;
+	uint8				fType;
+	int32				fIndex;
+
+	int32				fItems;
+	typedef std::map<int32, BUISItem*> ItemMap;
+	ItemMap				fItemMap;
+
+	BMessage *			fSendMessage;
+};
+
+
+class BUISItem {
+public:
+	BUISReport*			Report() const { return fReport; };
+	uint8				Type() const { return fReport->Type(); };
+	uint16				UsagePage() const { return fUsagePage; };
+	uint16				UsageId() const { return fUsageId; };
+	bool				IsRelative() const { return fIsRelative; };
+
+	status_t			Value(float& value);
+
+	status_t			SetTarget(BLooper *looper);
+	status_t			SetTarget(BLooper *looper, void *cookie);
+
+private:
+						BUISItem(BUISReport* report, int32 item,
+							uint16 usagePage, uint16 usageId, bool isRelative);
+						~BUISItem();
+						friend class BUISReport;
+						friend class BUISDevice;
+
+	BUISReport*			fReport;
+	int32				fIndex;
+
+	uint16				fUsagePage;
+	uint16				fUsageId;
+	bool				fIsRelative;
+
+	void *				fTarget;
 };
 
 
