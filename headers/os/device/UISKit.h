@@ -29,24 +29,23 @@ class BUISItem;
 
 class BUISRoster {
 public:
-	static BUISDevice *	FindByName(const char *name);
+	static BUISDevice*	FindByName(const char* name);
 
 						BUISRoster();
 							// TODO: add optional filter functionality
 	virtual				~BUISRoster();
 
-	status_t			GetNextDevice(BUISDevice **device);
+	status_t			GetNextDevice(BUISDevice** device);
 	void				Rewind();
 
-	status_t			StartWatching(BLooper *looper);
+	status_t			StartWatching(BLooper* looper);
 							// TODO: probably change to handler/looper
 							// or messenger
 	void				StopWatching();
 
 private:
 	uis_device_id		fCookie;
-	void *				fTarget;
-
+	void*				fTarget;
 };
 
 
@@ -60,25 +59,25 @@ public:
 	uis_device_id		Device() const { return fDevice; };
 
 	int32				CountReports(uint8 type) const;
-	BUISReport *		ReportAt(uint8 type, int32 index);
+	BUISReport*			ReportAt(uint8 type, int32 index);
 
-	BUISItem *			FindItem(uint16 usagePage, uint16 usageId,
+	BUISItem*			FindItem(uint16 usagePage, uint16 usageId,
 							uint8 type = UIS_TYPE_INPUT);
 
-	const char *		Name() const { return fName; };
-	const char *		Path() const { return fPath; };
+	const char*			Name() const { return fName; };
+	const char*			Path() const { return fPath; };
 	uint16				UsagePage() const { return fUsagePage; };
 	uint16				UsageId() const { return fUsageId; };
 
 private:
 	uis_device_id		fDevice;
-	char *				fName;
-	char *				fPath;
+	char*				fName;
+	char*				fPath;
 	uint16				fUsagePage;
 	uint16				fUsageId;
 
 	int32				fReports[UIS_TYPES];
-	typedef std::map<uint8, BUISReport*> ReportMap;
+	typedef std::map<int32, BUISReport*> ReportMap;
 	ReportMap			fReportMap[UIS_TYPES];
 
 	status_t			fStatus;
@@ -92,9 +91,9 @@ public:
 	int32				Index() const { return fIndex; };
 
 	int32				CountItems() const { return fItems; };
-	BUISItem *			ItemAt(int32 index);
+	BUISItem*			ItemAt(int32 index);
 
-	status_t			AddItemValue(int32 index, float value);
+	status_t			SetItemValue(int32 index, float value);
 	status_t			Send();
 	void				MakeEmpty();
 
@@ -112,7 +111,7 @@ private:
 	typedef std::map<int32, BUISItem*> ItemMap;
 	ItemMap				fItemMap;
 
-	BMessage *			fSendMessage;
+	BMessage*			fSendMessage;
 };
 
 
@@ -125,6 +124,7 @@ public:
 	bool				IsRelative() const { return fIsRelative; };
 
 	status_t			Value(float& value);
+	status_t			SetValue(float value);
 
 	status_t			SetTarget(BLooper *looper);
 	status_t			SetTarget(BLooper *looper, void *cookie);
@@ -143,7 +143,7 @@ private:
 	uint16				fUsageId;
 	bool				fIsRelative;
 
-	void *				fTarget;
+	void*				fTarget;
 };
 
 

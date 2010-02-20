@@ -98,8 +98,24 @@ BJoystick::BJoystick()
 	BUISRoster roster;
 	BUISDevice *device;
 
-	while (roster.GetNextDevice(&device) == B_OK)
-		fDevices->AddItem(device);
+	// joystick devices need to have at least: 2 axes (x & y) and 1 button
+	while (roster.GetNextDevice(&device) == B_OK) {
+		BUISItem* item = device->FindItem(HID_USAGE_PAGE_GENERIC_DESKTOP,
+			HID_USAGE_ID_X);
+		if (item != NULL) {
+			item = device->FindItem(HID_USAGE_PAGE_GENERIC_DESKTOP,
+				HID_USAGE_ID_Y);
+			if (item != NULL) {
+				item = device->FindItem(HID_USAGE_PAGE_BUTTON, 1);
+				if (item != NULL) {
+					fDevices->AddItem(device);
+					continue;
+				}
+			}
+		}
+		delete device;
+			// we're supposed to free device object if we don't use it
+	}
 
 	fLooper->Run();
 }
