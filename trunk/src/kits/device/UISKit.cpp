@@ -23,8 +23,8 @@ using namespace BPrivate;
 //	#pragma mark - BUISRoster
 
 
-BUISDevice *
-BUISRoster::FindByName(const char *name)
+BUISDevice*
+BUISRoster::FindByName(const char* name)
 {
 	BMessage command(IS_UIS_MESSAGE), reply;
 
@@ -62,7 +62,7 @@ BUISRoster::~BUISRoster()
 
 
 status_t
-BUISRoster::GetNextDevice(BUISDevice **device)
+BUISRoster::GetNextDevice(BUISDevice** device)
 {
 	if (device == NULL)
 		return B_BAD_VALUE;
@@ -101,7 +101,7 @@ BUISRoster::Rewind()
 
 
 status_t
-BUISRoster::StartWatching(BLooper *looper)
+BUISRoster::StartWatching(BLooper* looper)
 {
 	return B_OK;
 }
@@ -175,7 +175,7 @@ BUISDevice::CountReports(uint8 type) const
 }
 
 
-BUISReport *
+BUISReport*
 BUISDevice::ReportAt(uint8 type, int32 index)
 {
 	if (index < 0 || index >= CountReports(type))
@@ -198,7 +198,7 @@ BUISDevice::ReportAt(uint8 type, int32 index)
 	if (reply.FindInt32("items", &items) != B_OK)
 		return NULL;
 
-	BUISReport *report = new (std::nothrow)
+	BUISReport* report = new (std::nothrow)
 		BUISReport(this, type, index, items);
 	if (report) {
 		try {
@@ -213,7 +213,7 @@ BUISDevice::ReportAt(uint8 type, int32 index)
 }
 
 
-BUISItem *
+BUISItem*
 BUISDevice::FindItem(uint16 usagePage, uint16 usageId, uint8 type)
 {
 	BMessage command(IS_UIS_MESSAGE), reply;
@@ -232,7 +232,7 @@ BUISDevice::FindItem(uint16 usagePage, uint16 usageId, uint8 type)
 			|| reply.FindInt32("item", &itemIndex) != B_OK)
 		return NULL;
 
-	BUISReport *report = ReportAt(type, reportIndex);
+	BUISReport* report = ReportAt(type, reportIndex);
 	if (report == NULL)
 		return NULL;
 
@@ -261,7 +261,7 @@ BUISReport::~BUISReport()
 }
 
 
-BUISItem *
+BUISItem*
 BUISReport::ItemAt(int32 index)
 {
 	if (index < 0 || index >= fItems)
@@ -288,7 +288,7 @@ BUISReport::ItemAt(int32 index)
 			|| reply.FindBool("relative", &relative) != B_OK)
 		return NULL;
 
-	BUISItem *item = new (std::nothrow)
+	BUISItem* item = new (std::nothrow)
 		BUISItem(this, index, page, id, relative);
 	if (item) {
 		try {
@@ -304,9 +304,9 @@ BUISReport::ItemAt(int32 index)
 
 
 status_t
-BUISReport::AddItemValue(int32 index, float value)
+BUISReport::SetItemValue(int32 index, float value)
 {
-/*	if (fType != UIS_TYPE_OUTPUT && fType != UIS_TYPE_FEATURE)
+	if (fType != UIS_TYPE_OUTPUT && fType != UIS_TYPE_FEATURE)
 		return B_ERROR;
 
 	if (fSendMessage == NULL) {
@@ -314,9 +314,28 @@ BUISReport::AddItemValue(int32 index, float value)
 		if (fSendMessage == NULL)
 			return B_ERROR;
 		fSendMessage->AddInt32("opcode", B_UIS_SEND_REPORT);
-		fSendMessage->AddInt32("device", fDevice);
-		fSendMessage->AddInt32("report", fReport);
+		fSendMessage->AddInt32("device", fDevice->Device());
 		fSendMessage->AddInt8("type", (int8) fType);
+		fSendMessage->AddInt32("report", fIndex);
+	}
+
+	int32 count = 0;
+	fSendMessage->GetInfo("data", NULL, &count);
+	for (int32 i = 0; i < count; i++) {
+		const void *msgData;
+		ssize_t bytes;
+		if (fSendMessage->FindData("data", B_RAW_TYPE, i, &msgData, &bytes)
+				!= B_OK)
+			continue;
+		if (bytes != sizeof(uis_item_data))
+			continue;
+		if (((uis_item_data*) msgData)->index == index) {
+			uis_item_data data;
+			data.index = index;
+			data.value = value;
+			return fSendMessage->ReplaceData("data", B_RAW_TYPE, i, &data,
+				sizeof(uis_item_data));
+		}
 	}
 
 	uis_item_data data;
@@ -324,8 +343,7 @@ BUISReport::AddItemValue(int32 index, float value)
 	data.value = value;
 	return fSendMessage->AddData("data", B_RAW_TYPE, &data,
 		sizeof(uis_item_data));
-			// Haiku's AddData implementation doesn't do preallocation*/
-	return B_ERROR;
+			// Haiku's AddData implementation doesn't do preallocation
 }
 
 
@@ -394,14 +412,21 @@ BUISItem::Value(float& value)
 
 
 status_t
-BUISItem::SetTarget(BLooper *looper)
+BUISItem::SetValue(float value)
+{
+	return fReport->SetItemValue(fIndex, value);
+}
+
+
+status_t
+BUISItem::SetTarget(BLooper* looper)
 {
 	return SetTarget(looper, this);
 }
 
 
 status_t
-BUISItem::SetTarget(BLooper *looper, void *cookie)
+BUISItem::SetTarget(BLooper* looper, void* cookie)
 {
 	BMessage command(IS_UIS_MESSAGE), reply;
 
